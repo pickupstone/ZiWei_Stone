@@ -1568,6 +1568,30 @@ function renderYjm(){
   <p class="small mute" style="margin-top:10px">本命卦是梅花易數的一種用法，各家起卦數與解法略有不同；本工具採「年支數＋農曆月＋日 → 上卦，再加時支數 → 下卦，總數除以 6 定動爻」，互卦、之卦、錯卦、綜卦依通行定義。</p>`;
   el.innerHTML=s;
 }
+const FB_ITEMS=[['zw','紫微命盤與本命解說'],['bazi','八字'],['west','星座'],['yjm','易經本命卦'],['int','整合分析'],['ln','流年詳批（過去年份對照）'],['ask','問命盤']];
+const FB_LV=[[1,'不準'],[2,'有點偏'],[3,'一半一半'],[4,'大致準'],[5,'很準']];
+let fbSent=false;
+function renderFb(){
+  const el=$('fb');
+  el.innerHTML=`<h2>準確度回饋</h2><p class="small mute">看完各分頁後，依你自己的感受評分。沒看過的項目留空即可。送出的只有「項目＋分數」（例如「八字：4 分」），不含生日、時辰、問題或任何你輸入的內容，也無法追溯到你。</p>
+  ${FB_ITEMS.map(([k,n])=>`<div style="padding:8px 0;border-bottom:1px solid var(--line)"><div><b>${n}</b></div><div class="fbrow" data-k="${k}" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${FB_LV.map(([v,l])=>`<button type="button" class="fbb" data-v="${v}" style="padding:4px 10px">${v}・${l}</button>`).join('')}</div></div>`).join('')}
+  <div style="margin-top:12px"><button type="button" id="fbGo">送出回饋</button> <span id="fbMsg" class="small"></span></div>
+  <p class="small mute" style="margin-top:10px">想寫文字意見，可以到 <a href="https://github.com/pickupstone/ZiWei_Stone/issues" target="_blank" rel="noopener noreferrer">GitHub Issues</a> 留言（需要 GitHub 帳號，內容公開）。請不要在留言裡寫出自己或他人的生辰。</p>`;
+  const pick={};
+  el.querySelectorAll('.fbrow').forEach(r=>r.querySelectorAll('.fbb').forEach(b=>b.onclick=()=>{
+    const k=r.dataset.k,v=+b.dataset.v;if(pick[k]===v){delete pick[k]}else pick[k]=v;
+    r.querySelectorAll('.fbb').forEach(x=>{const on=pick[k]===+x.dataset.v;x.style.background=on?'var(--acc)':'';x.style.color=on?'#fff':''})}));
+  $('fbGo').onclick=()=>{
+    const list=Object.entries(pick);const msg=$('fbMsg');
+    if(!list.length){msg.textContent='請至少選一個項目的分數。';return}
+    if(fbSent){msg.textContent='這次已經送出過了，謝謝！';return}
+    fbSent=true;
+    let n=0;try{const ev=new CustomEvent('zw-feedback',{detail:list.map(([k,v])=>({k,v}))});document.dispatchEvent(ev);n=window.__fbOK?1:0}catch(e){}
+    const avg=(list.reduce((a,[,v])=>a+v,0)/list.length).toFixed(1);
+    msg.textContent=(n?'已送出，謝謝回饋！':'已記下（離線版不會傳送到任何地方）。')+`你這次的平均分數：${avg}`;
+    $('fbGo').disabled=true;
+  };
+}
 function renderInt(){
   const el=$('int');if(!A||!BZ||!WS){el.innerHTML='<span class="mute">請先輸入生辰並按「排盤」。整合分析會同時用到紫微、八字、星座與易經四套方法。</span>';return}
   const T=traitVectors(), comb={};TRAITS.forEach(k=>comb[k]=(T.zw[k]+T.bz[k]+T.ws[k]+T.yj[k])/4);
@@ -1606,7 +1630,7 @@ function renderInt(){
 
 // ===== 分頁重組 =====
 (function(){
-  const NAV=[['int','整合',null],['zw','紫微',['chart','ask','ln','geju','natal','daily','cal']],['bazi','八字',null],['west','星座',null],['yjm','易經',null],['trade','每日盤勢',null],['zhan','占卜',['yj','tarot']]];
+  const NAV=[['int','整合',null],['zw','紫微',['chart','ask','ln','geju','natal','daily','cal']],['bazi','八字',null],['west','星座',null],['yjm','易經',null],['trade','每日盤勢',null],['zhan','占卜',['yj','tarot']],['fb','回饋',null]];
   const SUBN={chart:'命盤',ask:'問命盤',ln:'流年詳批',geju:'格局',natal:'本命解說',daily:'流日',cal:'流日日曆',yj:'易經・六爻',tarot:'塔羅'};
   const tabs=document.querySelector('.tabs');
   tabs.innerHTML=NAV.map(([k,n,sub])=>`<button data-main="${k}"${sub?'':` data-tab="${k}"`}>${n}</button>`).join('');
@@ -1614,8 +1638,8 @@ function renderInt(){
   subBar.innerHTML=NAV.filter(x=>x[2]).flatMap(([k,n,sub])=>sub.map(s=>`<button data-tab="${s}" data-parent="${k}">${SUBN[s]}</button>`)).join('');
   tabs.after(subBar);
   const main=document.querySelector('main');
-  [['ask',''],['ln',''],['int','<div class="card" id="int"></div>'],['bazi','<div class="card" id="bazi"></div>'],['west','<div class="card" id="west"></div>'],['yjm','<div class="card" id="yjm"></div>'],['tarot','<div class="card"><h2>塔羅占卜</h2><div id="tarotUI"></div></div>']].forEach(([id,html])=>{const sec=document.createElement('section');sec.id='tab-'+id;sec.className='hide';sec.innerHTML=html;main.insertBefore(sec,document.querySelector('footer'))});
-  const ALL=['int','chart','ask','ln','geju','natal','daily','cal','bazi','west','yjm','trade','yj','tarot'];
+  [['ask',''],['ln',''],['int','<div class="card" id="int"></div>'],['bazi','<div class="card" id="bazi"></div>'],['west','<div class="card" id="west"></div>'],['yjm','<div class="card" id="yjm"></div>'],['fb','<div class="card" id="fb"></div>'],['tarot','<div class="card"><h2>塔羅占卜</h2><div id="tarotUI"></div></div>']].forEach(([id,html])=>{const sec=document.createElement('section');sec.id='tab-'+id;sec.className='hide';sec.innerHTML=html;main.insertBefore(sec,document.querySelector('footer'))});
+  const ALL=['int','chart','ask','ln','geju','natal','daily','cal','bazi','west','yjm','trade','yj','tarot','fb'];
   let cur={zw:'chart',zhan:'yj'};
   function show(sec){
     const parent=NAV.find(x=>x[0]===sec||(x[2]&&x[2].includes(sec)));const pk=parent[0];if(parent[2])cur[pk]=sec;
@@ -1629,7 +1653,7 @@ function renderInt(){
   window.showTab=show;
   // 日曆點擊跳流日
   const oldCal=renderCal;window.renderCal=function(){oldCal();$('cal').querySelectorAll('tr').forEach((tr,i)=>{if(!i)return;const f=tr.onclick;tr.onclick=()=>{f&&f();show('daily')}})};
-  show('int');
+  show('int');safe(renderFb,'fb');
 })();
 renderTarotUI();
 const _renderAll=renderAll;
@@ -1976,6 +2000,8 @@ return {yearReport,lifeReport};
   gc(location.pathname||'/','紫微・八字・星座・占卜',false);
   function onClick(id,name){var el=document.getElementById(id);if(el)el.addEventListener('click',function(){gc('use-'+name,name,true)})}
   onClick('go','排盤');onClick('askGo','問命盤');onClick('tgo','塔羅');onClick('cGo','流日日曆');onClick('yjGo','易經卜卦');onClick('lnGo','流年詳批');
+  window.__fbOK=1;
+  document.addEventListener('zw-feedback',function(e){try{(e.detail||[]).slice(0,10).forEach(function(x){var k=String(x.k).replace(/[^a-z]/g,'').slice(0,6),v=Math.max(1,Math.min(5,parseInt(x.v,10)||0));gc('fb-'+k+'-'+v,'回饋 '+k+' '+v+'分',true)})}catch(err){}});
   document.querySelectorAll('.tabs button').forEach(function(b){b.addEventListener('click',function(){var t=b.dataset.tab||b.dataset.main;if(t&&!seen[t]){seen[t]=1;gc('tab-'+t,'分頁 '+b.textContent,true)}})});
 })();
 </script>
