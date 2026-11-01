@@ -533,11 +533,13 @@ function meihua(upN,loN,dongN){const u=BY_K[((upN-1)%8+8)%8+1],l=BY_K[((loN-1)%8
 // 時間起卦：上卦＝(年支數＋農曆月＋農曆日)，下卦＝上數＋時支數，動爻＝總數 mod 6
 const BR='子丑寅卯辰巳午未申酉戌亥';
 function timeCast(dateStr,timeIdx){
+  let late=false;
+  if(+timeIdx===12){const [Y,M,D]=dateStr.split('-').map(Number);const t=new Date(Date.UTC(Y,M-1,D+1));dateStr=`${t.getUTCFullYear()}-${t.getUTCMonth()+1}-${t.getUTCDate()}`;timeIdx=0;late=true}
   const a=iztro.astro.bySolar(dateStr.split('-').map(Number).join('-'),timeIdx,'男',true,'zh-TW');
   const L=a.rawDates.lunarDate, yb=a.rawDates.chineseDate.yearly[1], hb=a.rawDates.chineseDate.hourly[1];
   const ys=BR.indexOf(yb)+1, hs=BR.indexOf(hb)+1, s1=ys+L.lunarMonth+L.lunarDay, s2=s1+hs;
   const r=meihua(s1,s2,s2);
-  r.basis=`${yb}年（${ys}）＋農曆${L.isLeap?'閏':''}${L.lunarMonth}月＋${L.lunarDay}日＝${s1} → 上卦；再加${hb}時（${hs}）＝${s2} → 下卦；${s2}÷6 餘數定動爻`;
+  r.basis=(late?'晚子時（23:00 後）以隔天的日子計；':'')+`${yb}年（${ys}）＋農曆${L.isLeap?'閏':''}${L.lunarMonth}月＋${L.lunarDay}日＝${s1} → 上卦；再加${hb}時（${hs}）＝${s2} → 下卦；${s2}÷6 餘數定動爻`;
   return r;
 }
 function lineSVG(code,moving){
@@ -1526,6 +1528,46 @@ function traitVectors(){
   yjE.push(`本命卦${G.b.z.n}（體${G.ty.ti.n}、用${G.ty.yong.n}）`,`之卦${G.z.z.n}`);
   return {zw:normT(zw),bz:normT(bz),ws:normT(ws),yj:normT(yj),zwE,bzE,wsE,yjE,G};
 }
+const STAGE=['基層、起步','內在、家庭','進退的關口','接近核心、輔佐','主位、成就','退居、收尾'];
+function renderYjm(){
+  const el=$('yjm');if(!A){el.innerHTML='<span class="mute">請先輸入生辰並按「排盤」。</span>';return}
+  const G=benmingGua(), b=G.b, z=G.z, hu=G.hu, mv=G.r.moving, d=G.r.dong;
+  const cuo=YJ.hex(b.code.split('').map(c=>c==='1'?'0':'1').join('')), zong=YJ.hex(b.code.split('').reverse().join(''));
+  const gua=(h,lab,m)=>`<div style="text-align:center;min-width:96px">${YJ.lineSVG(h.code,m)}<div><b>${h.z.n}</b></div><div class="small mute">${lab}</div></div>`;
+  const tri=t=>`${t.s} ${t.n}（${t.x}・${t.w}）：${TRI_DESC[t.n]}`;
+  const T={};addT(T,YJ_TRI[G.ty.ti.n],1.5);addT(T,YJ_TRI[G.ty.yong.n],1);addT(T,YJ_TRI[z.up.n],0.5);addT(T,YJ_TRI[z.lo.n],0.5);
+  const top=Object.entries(T).sort((a,b)=>b[1]-a[1]).slice(0,3).map(x=>x[0]);
+  let s=`<h2>易經本命卦</h2><p class="small mute">用梅花易數「年月日時起卦」：出生時間固定，所以本命卦一輩子不變。占卜分頁的卦則是依「問卦當下」的時間或擲幣起出來的，每次都會不同。</p>
+  <p class="small">起卦依據：${G.r.basis}，得第${d+1}爻動。</p>
+  <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin:10px 0">${gua(b,'本卦・先天本質',mv)}${gua(hu,'互卦・過程與中年',[])}${gua(z,'之卦・走向與晚年',[])}</div>
+  <h3>一、本卦：${b.z.n}</h3>
+  <div class="verse">卦辭：${b.z.g}${b.z.t?`<br><span class="small">彖曰：${b.z.t}</span>`:''}<br><span class="small">象曰：${b.z.x}</span></div>
+  <p class="small"><b>白話：</b>${b.mean[0]}</p>
+  <p class="small"><b>上卦</b> ${tri(b.up)}<br><b>下卦</b> ${tri(b.lo)}</p>
+  <h3>二、動爻：${b.z.y[d].p}</h3>
+  <p class="small mute">${G.zx.rule}</p>
+  ${G.zx.texts.map(x=>`<div class="verse">${x.who}卦・${x.p}：${x.c}${x.x?`<br><span class="small">象曰：${x.x}</span>`:''}</div>`).join('')}
+  <p class="small">第${d+1}爻代表「${STAGE[d]}」的位置，表示你一生最關鍵的課題和轉折，會落在這個層次上。</p>
+  <h3>三、六爻全覽</h3>
+  ${[5,4,3,2,1,0].map(i=>`<div class="small" style="padding:4px 0;${i===d?'color:var(--ji);font-weight:600':''}">${b.z.y[i].p}（${STAGE[i]}）：${b.z.y[i].c}${i===d?'　← 動爻':''}</div>`).join('')}
+  <h3>四、體用：你和環境的關係</h3>
+  <p class="small">動爻在${d<3?'下':'上'}卦，所以${d<3?'上':'下'}卦是「體」（你自己）、${d<3?'下':'上'}卦是「用」（外在環境、所遇的人事）。</p>
+  <p class="small"><b>體卦</b> ${tri(G.ty.ti)}<br><b>用卦</b> ${tri(G.ty.yong)}</p>
+  <p class="small">${G.ty.r}</p>
+  <h3>五、人生三段</h3>
+  <p class="small"><b>本卦 ${b.z.n}（先天、前半生）：</b>${b.mean[0]}</p>
+  <p class="small"><b>互卦 ${hu.z.n}（過程、中年）：</b>${hu.mean[0]}</p>
+  <p class="small"><b>之卦 ${z.z.n}（走向、晚年）：</b>${z.mean[0]}</p>
+  <h3>六、另一面</h3>
+  <p class="small"><b>錯卦 ${cuo.z.n}（陰陽全反，你沒展現的另一面）：</b>${cuo.mean[0]}</p>
+  <p class="small"><b>綜卦 ${zong.z.n}（上下顛倒，別人眼中的你）：</b>${zong.mean[0]}</p>
+  <h3>七、性格傾向</h3>
+  <p class="small">依體卦、用卦與之卦的卦德換算，易經這套最突出的特質是「${top.join('、')}」。四套方法的比較請看「整合」分頁。</p>
+  <h3>八、處世提醒</h3>
+  <p class="small">${b.mean[2]?`本卦的態度是「${b.mean[2]}」，`:''}之卦的態度是「${z.mean[2]||''}」。${G.ty.score>=0.5?'體用相合，順勢而為、借助外力最有利。':G.ty.score>0?'可以成事但要自己出力，宜量力而為。':'外在消耗較多，宜守住本分、不要勉強擴張。'}</p>
+  <p class="small mute" style="margin-top:10px">本命卦是梅花易數的一種用法，各家起卦數與解法略有不同；本工具採「年支數＋農曆月＋日 → 上卦，再加時支數 → 下卦，總數除以 6 定動爻」，互卦、之卦、錯卦、綜卦依通行定義。</p>`;
+  el.innerHTML=s;
+}
 function renderInt(){
   const el=$('int');if(!A||!BZ||!WS){el.innerHTML='<span class="mute">請先輸入生辰並按「排盤」。整合分析會同時用到紫微、八字、星座與易經四套方法。</span>';return}
   const T=traitVectors(), comb={};TRAITS.forEach(k=>comb[k]=(T.zw[k]+T.bz[k]+T.ws[k]+T.yj[k])/4);
@@ -1564,7 +1606,7 @@ function renderInt(){
 
 // ===== 分頁重組 =====
 (function(){
-  const NAV=[['int','整合',null],['zw','紫微',['chart','ask','ln','geju','natal','daily','cal']],['bazi','八字',null],['west','星座',null],['trade','每日盤勢',null],['zhan','占卜',['yj','tarot']]];
+  const NAV=[['int','整合',null],['zw','紫微',['chart','ask','ln','geju','natal','daily','cal']],['bazi','八字',null],['west','星座',null],['yjm','易經',null],['trade','每日盤勢',null],['zhan','占卜',['yj','tarot']]];
   const SUBN={chart:'命盤',ask:'問命盤',ln:'流年詳批',geju:'格局',natal:'本命解說',daily:'流日',cal:'流日日曆',yj:'易經・六爻',tarot:'塔羅'};
   const tabs=document.querySelector('.tabs');
   tabs.innerHTML=NAV.map(([k,n,sub])=>`<button data-main="${k}"${sub?'':` data-tab="${k}"`}>${n}</button>`).join('');
@@ -1572,8 +1614,8 @@ function renderInt(){
   subBar.innerHTML=NAV.filter(x=>x[2]).flatMap(([k,n,sub])=>sub.map(s=>`<button data-tab="${s}" data-parent="${k}">${SUBN[s]}</button>`)).join('');
   tabs.after(subBar);
   const main=document.querySelector('main');
-  [['ask',''],['ln',''],['int','<div class="card" id="int"></div>'],['bazi','<div class="card" id="bazi"></div>'],['west','<div class="card" id="west"></div>'],['tarot','<div class="card"><h2>塔羅占卜</h2><div id="tarotUI"></div></div>']].forEach(([id,html])=>{const sec=document.createElement('section');sec.id='tab-'+id;sec.className='hide';sec.innerHTML=html;main.insertBefore(sec,document.querySelector('footer'))});
-  const ALL=['int','chart','ask','ln','geju','natal','daily','cal','bazi','west','trade','yj','tarot'];
+  [['ask',''],['ln',''],['int','<div class="card" id="int"></div>'],['bazi','<div class="card" id="bazi"></div>'],['west','<div class="card" id="west"></div>'],['yjm','<div class="card" id="yjm"></div>'],['tarot','<div class="card"><h2>塔羅占卜</h2><div id="tarotUI"></div></div>']].forEach(([id,html])=>{const sec=document.createElement('section');sec.id='tab-'+id;sec.className='hide';sec.innerHTML=html;main.insertBefore(sec,document.querySelector('footer'))});
+  const ALL=['int','chart','ask','ln','geju','natal','daily','cal','bazi','west','yjm','trade','yj','tarot'];
   let cur={zw:'chart',zhan:'yj'};
   function show(sec){
     const parent=NAV.find(x=>x[0]===sec||(x[2]&&x[2].includes(sec)));const pk=parent[0];if(parent[2])cur[pk]=sec;
@@ -1591,7 +1633,7 @@ function renderInt(){
 })();
 renderTarotUI();
 const _renderAll=renderAll;
-renderAll=function(){computeExtra();_renderAll();safe(renderBazi,'bazi');safe(renderWest,'west');safe(renderInt,'int')};
+renderAll=function(){computeExtra();_renderAll();safe(renderBazi,'bazi');safe(renderWest,'west');safe(renderInt,'int');safe(renderYjm,'yjm')};
 renderAll();
 </script>
 <script>"use strict";
