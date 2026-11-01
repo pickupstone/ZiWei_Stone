@@ -1333,7 +1333,7 @@ function renderTrade(){
   <p><b>今日做法：</b>${STANCE_DO[o.stance]}</p>${'六日'.includes(weekOf(ds))?`<p class="small" style="color:var(--quan)">週末台指期日盤休市，以下僅供參考；國定假日請自行確認。</p>`:''}
   <h3>紫微：流日四化</h3><p class="small mute">日干「${o.d.gz[0]}」→ ${o.d.stars.map((x,k)=>x+'化'+MUT[k]).join('、')}</p>${o.notes.length?o.notes.map(n=>`<p class="small">${n}</p>`).join(''):'<p class="small">四化沒有落入命、財、官、田、福等與交易相關的宮位，紫微面中性。</p>'}
   <h3>易經：日卦（梅花易數，以辰時開盤起卦）</h3>${readingHTML(o.tc,{hu:true,dong:o.tc.dong,full:false})}
-  <h3>紀律提醒</h3><p class="small">・不論今天的態度為何，單筆虧損上限與停損規則不變。</p><p class="small">・這個結果與你的通道指標訊號衝突時，以指標與風控為準。</p>
+  <h3>紀律提醒</h3><p class="small">・不論今天的態度為何，單筆虧損上限與停損規則不變。</p><p class="small">・這個結果與你的指標訊號衝突時，以指標與風控為準。</p>
   <p class="small mute" style="margin-top:10px">分數規則：紫微看流日四化落入命、財、官、田、福的情形加減分；易經看日卦的態度（進＋1、守 0、觀−0.5、退−1）與體用生剋。這是傳統術數的參考，不是交易訊號；想知道有沒有用，可在「流日日曆」匯出 CSV，和實際行情對照回測。</p>`;
   $('trade').innerHTML=s;
 }
@@ -1502,6 +1502,12 @@ const W_EL={火:{行動開創:1,領導主導:0.5},土:{穩健務實:1.5},風:{�
 const W_MOD={開創:{領導主導:0.5,行動開創:0.5},固定:{穩健務實:0.5},變動:{變動自由:1}};
 function addT(v,m,w=1){for(const k in m)v[k]=(v[k]||0)+m[k]*w}
 function normT(v){const s=TRAITS.reduce((a,k)=>a+(v[k]||0),0)||1;const o={};TRAITS.forEach(k=>o[k]=(v[k]||0)/s);return o}
+const YJ_TRI={乾:{領導主導:1.5,行動開創:0.5},坤:{穩健務實:1.5,情感細膩:0.5},震:{行動開創:1.5,變動自由:0.5},巽:{人際交際:1,變動自由:1},坎:{思考分析:1,情感細膩:0.5,變動自由:0.5},離:{人際交際:1,行動開創:0.5,思考分析:0.5},艮:{穩健務實:1,思考分析:1},兌:{人際交際:1.5,情感細膩:0.5}};
+const TRI_DESC={乾:'剛健、主動、自強',坤:'柔順、包容、承載',震:'行動、奮起、開創',巽:'柔和、滲透、善於溝通',坎:'智慧、深沉、能在險中求',離:'光明、表現、依附',艮:'穩重、知止、守成',兌:'喜悅、口才、人緣'};
+function benmingGua(){
+  const r=YJ.timeCast(A.solarDate,+$('t').value);const b=YJ.hex(r.code),c=YJ.flip(r.code,r.moving),z=YJ.hex(c),zx=YJ.zhuxi(r.code,r.moving),ty=YJ.tiyong(r.code,r.dong),hu=YJ.hex(YJ.huGua(r.code));
+  return {r,b,z,zx,ty,hu};
+}
 function traitVectors(){
   const zw={},zwE=[],bz={},bzE=[],ws={},wsE=[];
   const soul=A.palaces.find(p=>p.name==='命宮'), body=A.palaces.find(p=>p.isBodyPalace);
@@ -1515,22 +1521,26 @@ function traitVectors(){
   [['太陽',2],['月亮',1.5],['水星',0.5],['金星',0.5],['火星',0.5]].forEach(([n,wt])=>{const sg=S[g(n).sign];addT(ws,W_EL[sg.el],wt);addT(ws,W_MOD[sg.mod],wt)});
   const aw=BIRTH.exact?1.5:0.5;addT(ws,W_EL[S[WS.ascS].el],aw);addT(ws,W_MOD[S[WS.ascS].mod],aw);
   wsE.push(`太陽${S[g('太陽').sign].n}`,`月亮${S[g('月亮').sign].n}`,`上升${S[WS.ascS].n}${BIRTH.exact?'':'(估)'}`);
-  return {zw:normT(zw),bz:normT(bz),ws:normT(ws),zwE,bzE,wsE};
+  const yj={},yjE=[];const G=benmingGua();
+  addT(yj,YJ_TRI[G.ty.ti.n],1.5);addT(yj,YJ_TRI[G.ty.yong.n],1);addT(yj,YJ_TRI[G.z.up.n],0.5);addT(yj,YJ_TRI[G.z.lo.n],0.5);
+  yjE.push(`本命卦${G.b.z.n}（體${G.ty.ti.n}、用${G.ty.yong.n}）`,`之卦${G.z.z.n}`);
+  return {zw:normT(zw),bz:normT(bz),ws:normT(ws),yj:normT(yj),zwE,bzE,wsE,yjE,G};
 }
 function renderInt(){
-  const el=$('int');if(!A||!BZ||!WS){el.innerHTML='<span class="mute">請先輸入生辰並按「排盤」。整合分析會同時用到紫微、八字與星座三套系統。</span>';return}
-  const T=traitVectors(), comb={};TRAITS.forEach(k=>comb[k]=(T.zw[k]+T.bz[k]+T.ws[k])/3);
+  const el=$('int');if(!A||!BZ||!WS){el.innerHTML='<span class="mute">請先輸入生辰並按「排盤」。整合分析會同時用到紫微、八字、星座與易經四套方法。</span>';return}
+  const T=traitVectors(), comb={};TRAITS.forEach(k=>comb[k]=(T.zw[k]+T.bz[k]+T.ws[k]+T.yj[k])/4);
   const rank=v=>[...TRAITS].sort((a,b)=>v[b]-v[a]);
-  const rz=rank(T.zw),rb=rank(T.bz),rw=rank(T.ws),rc=rank(comb);
-  const top3=v=>v.slice(0,3), agree=k=>[top3(rz).includes(k)?'紫微':null,top3(rb).includes(k)?'八字':null,top3(rw).includes(k)?'星座':null].filter(Boolean);
-  const allAgree=TRAITS.filter(k=>agree(k).length===3), twoAgree=TRAITS.filter(k=>agree(k).length===2);
-  let s=`<h2>三合一整合分析</h2><p class="small mute">把紫微斗數、八字、西洋星座各自換算成七種性格特質的比重，再看三套系統在哪裡一致。三者一致的地方最值得參考，分歧的地方代表不同面向。</p>`;
-  s+=`<div class="hit 科" style="border-color:var(--acc)"><b>一句話：</b>${allAgree.length?`三套系統都指向「${allAgree.join('、')}」`:twoAgree.length?`有兩套系統共同支持的特質：「${twoAgree.join("、")}」`:'三套系統的側重點各不相同'}；綜合來看最突出的是「${rc[0]}」與「${rc[1]}」，相對最弱的是「${rc[6]}」。</div>`;
-  s+=`<h3>特質比重</h3><div style="overflow-x:auto"><table class="small"><tr><th>特質</th><th>紫微</th><th>八字</th><th>星座</th><th>綜合</th><th>一致</th></tr>${rc.map(k=>`<tr><td><b>${k}</b></td>${[T.zw,T.bz,T.ws,comb].map(v=>`<td><div style="background:var(--line);border-radius:3px;width:54px;height:8px;display:inline-block;vertical-align:middle"><div style="background:var(--acc);height:8px;border-radius:3px;width:${Math.min(100,v[k]*250)}%"></div></div></td>`).join('')}<td>${agree(k).length?agree(k).join('、'):''}</td></tr>`).join('')}</table></div>
-  <p class="small mute">依據——紫微：${T.zwE.join('、')}；八字：${T.bzE.join('、')}；星座：${T.wsE.join('、')}。</p>`;
+  const rz=rank(T.zw),rb=rank(T.bz),rw=rank(T.ws),ry=rank(T.yj),rc=rank(comb);
+  const top3=v=>v.slice(0,3), agree=k=>[top3(rz).includes(k)?'紫微':null,top3(rb).includes(k)?'八字':null,top3(rw).includes(k)?'星座':null,top3(ry).includes(k)?'易經':null].filter(Boolean);
+  const allAgree=TRAITS.filter(k=>agree(k).length===4), threeAgree=TRAITS.filter(k=>agree(k).length===3), twoAgree=TRAITS.filter(k=>agree(k).length===2);
+  let s=`<h2>整合分析（紫微・八字・星座・易經）</h2><p class="small mute">把紫微斗數、八字、西洋星座與易經本命卦各自換算成七種性格特質的比重，再看四套方法在哪裡一致。越多方法一致的地方越值得參考，分歧的地方代表不同面向。</p>`;
+  s+=`<div class="hit 科" style="border-color:var(--acc)"><b>一句話：</b>${allAgree.length?`四套方法都指向「${allAgree.join('、')}」`:threeAgree.length?`有三套方法共同指向「${threeAgree.join('、')}」`:twoAgree.length?`有兩套方法共同支持的特質：「${twoAgree.join("、")}」`:'四套方法的側重點各不相同'}；綜合來看最突出的是「${rc[0]}」與「${rc[1]}」，相對最弱的是「${rc[6]}」。</div>`;
+  s+=`<h3>特質比重</h3><div style="overflow-x:auto"><table class="small"><tr><th>特質</th><th>紫微</th><th>八字</th><th>星座</th><th>易經</th><th>綜合</th><th>一致</th></tr>${rc.map(k=>`<tr><td><b>${k}</b></td>${[T.zw,T.bz,T.ws,T.yj,comb].map(v=>`<td><div style="background:var(--line);border-radius:3px;width:54px;height:8px;display:inline-block;vertical-align:middle"><div style="background:var(--acc);height:8px;border-radius:3px;width:${Math.min(100,v[k]*250)}%"></div></div></td>`).join('')}<td>${agree(k).length?agree(k).join('、'):''}</td></tr>`).join('')}</table></div>
+  <p class="small mute">依據——紫微：${T.zwE.join('、')}；八字：${T.bzE.join('、')}；星座：${T.wsE.join('、')}；易經：${T.yjE.join('、')}。</p>`;
   s+=`<h3>性格</h3>`+rc.slice(0,3).map(k=>`<p><b>${k}</b>${agree(k).length?`<span class="small mute">（${agree(k).join('、')}支持）</span>`:''}：${TRAIT_DESC[k]}</p>`).join('');
   const soul=A.palaces.find(p=>p.name==='命宮'),S=WEST.SIGNS,g=n=>WS.P.find(p=>p.n===n);
-  s+=`<p class="small">・紫微看你：${soul.majorStars.length?SP[soul.majorStars[0].name][0]:'命宮無主星，個性可塑、易受環境影響。'}</p><p class="small">・八字看你：${BAZI.DM[BZ.dm]}</p><p class="small">・星座看你：${S[g('太陽').sign].core}</p>`;
+  s+=`<p class="small">・紫微看你：${soul.majorStars.length?SP[soul.majorStars[0].name][0]:'命宮無主星，個性可塑、易受環境影響。'}</p><p class="small">・八字看你：${BAZI.DM[BZ.dm]}</p><p class="small">・星座看你：${S[g('太陽').sign].core}</p><p class="small">・易經看你：本命卦${T.G.b.z.n}，體卦${T.G.ty.ti.n}（${TRI_DESC[T.G.ty.ti.n]}）。${T.G.b.mean[0]}</p>`;
+  {const G=T.G;s+=`<h3>易經本命卦</h3><p class="small mute">以梅花易數用出生時間起卦：${G.r.basis}。</p><p><b>${G.b.z.n}</b>${G.r.moving.length?` 之 <b>${G.z.z.n}</b>`:''}，互卦${G.hu.z.n}。</p><div class="verse">卦辭：${G.b.z.g}<br><span class="small">象曰：${G.b.z.x}</span></div>${G.zx.texts.map(x=>`<div class="verse small">${x.who}卦・${x.p}：${x.c}${x.x?`<br>象曰：${x.x}`:''}</div>`).join('')}<p class="small"><b>本質：</b>${G.b.mean[0]}　<b>過程：</b>互卦${G.hu.z.n}，${G.hu.mean[0]}　<b>走向：</b>之卦${G.z.z.n}，${G.z.mean[0]}</p><p class="small"><b>體用：</b>${G.ty.r}</p>`}
   s+=`<h3>盲點與課題</h3><p>「${rc[6]}」相對最弱：${TRAIT_WEAK[rc[6]]}</p>`;
   const tot=Object.values(BZ.wx).reduce((a,c)=>a+c,0), lack=Object.entries(BZ.wx).filter(([k,v])=>v/tot<0.06).map(([k])=>k);
   if(lack.length)s+=`<p class="small">・八字${lack.map(k=>BAZI.WX_LACK[k]).join('；')}</p>`;
@@ -1548,7 +1558,7 @@ function renderInt(){
   s+=`<h3>感情</h3><p class="small">・紫微夫妻宮${ms('夫妻').map(x=>x.name).join('、')}：${ms('夫妻').map(x=>SP[x.name][2]).join('')}</p><p class="small">・八字配偶星（${spouse.join('、')}）力量 ${spN.toFixed(1)}，日支（配偶宮）本氣為${rizhi}：${BAZI.SS[rizhi].split('。')[0]}。</p><p class="small">・星座金星${S[ve.sign].n}：${S[ve.sign].love}月亮${S[mo.sign].n}：${S[mo.sign].emo}第七宮（伴侶）是${S[(WS.ascS+6)%12].n}${BIRTH.exact?'':'（估）'}。</p>`;
   const h=A.horoscope(ymdNoPad(today()),6), dp=A.palaces[h.decadal.index];
   s+=`<h3>目前時運</h3><p class="small">・紫微：${dp?`走${dp.name}大限（${dp.decadal.range.join('–')} 歲），這十年重心在「${PALACE_DOMAIN[dp.name]}」。`:'不在大限範圍。'}</p><p class="small">・八字：${BZ.cur?`走${BZ.cur.p}大運（${BZ.cur.ss}），${BZ.xi.includes(BAZI.GW[BAZI.G.indexOf(BZ.cur.p[0])])?'屬喜用，較順':BZ.ji.includes(BAZI.GW[BAZI.G.indexOf(BZ.cur.p[0])])?'屬忌神，阻力較多':'喜忌參半'}。`:'尚未起運。'}</p>`;
-  s+=`<p class="small mute" style="margin-top:10px">整合方法：各系統的星曜、十神、星座元素按規則換算成特質分數後平均，權重是本工具設定的，屬於綜合參考；三套系統原本的理論彼此獨立，沒有公認的合併方法。</p>`;
+  s+=`<p class="small mute" style="margin-top:10px">整合方法：各系統的星曜、十神、星座元素按規則換算成特質分數後平均，權重是本工具設定的，屬於綜合參考；四套方法原本的理論彼此獨立，沒有公認的合併方法。</p>`;
   el.innerHTML=s;
 }
 
