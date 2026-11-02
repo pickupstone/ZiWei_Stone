@@ -645,6 +645,7 @@ function compute(o){
   let dd={y:o.y,m:o.m,d:o.d};if(o.hh>=23){const t=new Date(Date.UTC(o.y,o.m-1,o.d+1));dd={y:t.getUTCFullYear(),m:t.getUTCMonth()+1,d:t.getUTCDate()}}
   const di=dayIdx(dd.y,dd.m,dd.d), hb=Math.floor((o.hh+1)/2)%12, hs=((di%10)%5*2+hb)%10;
   const P=[gz(yi),gz(mIdx),gz(di),G[hs]+Z[hb]];
+  const NH=!!o.noHour, PP=NH?P.slice(0,3):P;
   const dm=P[2][0];
   // 節氣（換月點）前後
   const k=Math.floor(A.norm(lon-315)/30), prevT=A.norm(315+30*k), nextT=A.norm(315+30*(k+1));
@@ -656,7 +657,7 @@ function compute(o){
   const dayun=[];for(let i=1;i<=8;i++){const p=gz(mIdx+(fwd?i:-i));const age=startYears+10*(i-1);dayun.push({p,age,year:o.y+age,ss:shishen(dm,p[0])})}
   // 五行強弱
   const wx={木:0,火:0,土:0,金:0,水:0};
-  P.forEach((p,i)=>{if(i!==2)wx[GW[G.indexOf(p[0])]]+=1;else wx[GW[G.indexOf(p[0])]]+=1;CANG[p[1]].forEach((c,j)=>wx[GW[G.indexOf(c)]]+=CW[j]*(i===1?2:1))});
+  PP.forEach((p,i)=>{if(i!==2)wx[GW[G.indexOf(p[0])]]+=1;else wx[GW[G.indexOf(p[0])]]+=1;CANG[p[1]].forEach((c,j)=>wx[GW[G.indexOf(c)]]+=CW[j]*(i===1?2:1))});
   const dmw=GW[G.indexOf(dm)], yin=Object.keys(SHENG).find(k=>SHENG[k]===dmw);
   const self=wx[dmw]+wx[yin], tot=Object.values(wx).reduce((a,b)=>a+b,0), ratio=self/tot;
   const deLing=[dmw,yin].includes(ZW[P[1][1]]);
@@ -666,15 +667,16 @@ function compute(o){
   const ji=strong?[yin,dmw]:[guan,cai,out];
   // 十神統計
   const ssCount={};const addSS=(s,w)=>{const n=shishen(dm,s);ssCount[n]=(ssCount[n]||0)+w};
-  P.forEach((p,i)=>{if(i!==2)addSS(p[0],1);CANG[p[1]].forEach((c,j)=>addSS(c,CW[j]*(i===1?1.5:1)))});
+  PP.forEach((p,i)=>{if(i!==2)addSS(p[0],1);CANG[p[1]].forEach((c,j)=>addSS(c,CW[j]*(i===1?1.5:1)))});
   const ssList=Object.entries(ssCount).sort((a,b)=>b[1]-a[1]);
   // 格局：月令本氣十神（透干者優先）
-  const mz=CANG[P[1][1]];let geSS=shishen(dm,mz[0]);const tou=mz.find(c=>[P[0][0],P[1][0],P[3][0]].includes(c)&&!['比肩','劫財'].includes(shishen(dm,c)));if(tou)geSS=shishen(dm,tou);
+  const mz=CANG[P[1][1]];let geSS=shishen(dm,mz[0]);const tou=mz.find(c=>PP.map(p=>p[0]).filter((_,i)=>i!==2).includes(c)&&!['比肩','劫財'].includes(shishen(dm,c)));if(tou)geSS=shishen(dm,tou);
   const geju=geSS==='比肩'?'建祿格':geSS==='劫財'?(yang(dm)?'羊刃格':'建祿格'):geSS==='七殺'?'七殺格':geSS+'格';
   const now=new Date().getFullYear(), age=now-o.y;
   const cur=dayun.filter(x=>x.age<=age).pop();
-  return {P,dm,dmw,wx,ratio,strong,deLing,xi,ji,ssList,geju,geSS,dayun,cur,fwd,start:{y:sy,m:sm},jie:{prev:JIE[k],next:JIE[(k+1)%12],prevJ,nextJ},jd,yy,
-    tenGods:P.map((p,i)=>i===2?'日主':shishen(dm,p[0])),cang:P.map(p=>CANG[p[1]].map(c=>({c,ss:shishen(dm,c)}))),nearJie:Math.min(Math.abs(jd-prevJ),Math.abs(nextJ-jd))*24};
+  if(NH)P[3]='？？';
+  return {noHour:NH,P,dm,dmw,wx,ratio,strong,deLing,xi,ji,ssList,geju,geSS,dayun,cur,fwd,start:{y:sy,m:sm},jie:{prev:JIE[k],next:JIE[(k+1)%12],prevJ,nextJ},jd,yy,
+    tenGods:P.map((p,i)=>i===2?'日主':NH&&i===3?'不詳':shishen(dm,p[0])),cang:P.map((p,i)=>NH&&i===3?[]:CANG[p[1]].map(c=>({c,ss:shishen(dm,c)}))),nearJie:Math.min(Math.abs(jd-prevJ),Math.abs(nextJ-jd))*24};
 }
 const DM={甲:'甲木如參天大樹，正直有骨氣、重原則、有上進心，願意承擔；缺點是固執、不易轉彎。',乙:'乙木如花草藤蔓，柔韌、適應力強、懂得借力，人緣好；缺點是依賴心與優柔寡斷。',丙:'丙火如太陽，熱情開朗、大方外向、樂於付出，有感染力；缺點是急躁、愛面子、三分鐘熱度。',丁:'丁火如燭光，細膩溫暖、思慮周密、重精神層面；缺點是敏感多疑、情緒內斂。',戊:'戊土如高山厚土，穩重踏實、守信可靠、有包容力；缺點是保守固執、反應較慢。',己:'己土如田園之土，溫和務實、善於經營與照顧人；缺點是想太多、容易猶豫。',庚:'庚金如刀劍鋼鐵，剛毅果決、講義氣、行動力強；缺點是衝動、說話直、不夠圓融。',辛:'辛金如珠玉，精緻有品味、自尊心強、重細節；缺點是挑剔、好面子、容易受傷。',壬:'壬水如江河大海，聰明靈活、眼界開闊、善於變通；缺點是不安定、難以專注。',癸:'癸水如雨露，心思細密、直覺敏銳、有想像力；缺點是多慮、容易悲觀或退縮。'};
 const SS={比肩:'自我、兄弟朋友、競爭者。多者獨立自主、重義氣，但固執、易與人爭。',劫財:'同類而爭奪。多者行動力強、敢冒險，但花錢大方、易破財或被朋友連累。',食神:'才華、口福、享受、表達。多者溫和有才藝、懂生活，但可能懶散。',傷官:'聰明、創意、叛逆、口才。多者才華洋溢、不拘一格，但易得罪人、不服管。',偏財:'流動之財、投資、父親、人緣。多者慷慨、善交際、有生意頭腦，但財來財去。',正財:'正當收入、勤儉、妻子（男命）。多者務實守財、重責任，但較保守。',七殺:'壓力、魄力、權威、挑戰。多者果斷有魄力、能扛壓力，但性急、壓力大。',正官:'規矩、名譽、職位、丈夫（女命）。多者守法自律、重名譽，適合體制內發展。',偏印:'偏門學問、直覺、孤獨。多者思想獨特、領悟力高，但孤僻、易鑽牛角尖。',正印:'學問、長輩、庇蔭、母親。多者仁慈好學、得長輩照顧，但依賴性較強。'};
@@ -2027,11 +2029,12 @@ function initTime(id){const n=new Date();$(id+'D').value=`${n.getFullYear()}-${p
 // ---------- 命盤結合 ----------
 // opts: {topic, date, wx:[[五行,權重,說明]], signs:[[星座idx,說明]], el:西洋元素}
 function chartLink(o){
-  if(!A||!BZ||!WS)return {html:`<div class="hit" style="border-color:var(--line)"><b>結合命盤</b><p class="small mute">先在上方輸入生辰並按「排盤」，這裡就會把結果和你的紫微流年、八字喜忌、星座行運合在一起看。</p></div>`,score:0,has:false};
+  if(!BZ||!WS)return {html:`<div class="hit" style="border-color:var(--line)"><b>結合命盤</b><p class="small mute">先在上方輸入生辰並按「排盤」，這裡就會把結果和你的紫微流年、八字喜忌、星座行運合在一起看。</p></div>`,score:0,has:false};
   const t=o.topic, parts=[];let total=0;
   // 紫微
   let zs=0;const zl=[];
-  try{
+  if(!A){parts.push(`<p class="small"><b>紫微</b> <span class="mute">時辰不詳，無法排紫微，這部分略過。</span></p>`)}
+  else try{
     const h=ASK.horo(o.date);
     t.p.forEach((pn,k)=>{const p=ASK.pal(pn);if(!p)return;const w=k?0.5:1;
       const n=ASK.natalScore(p);zs+=n.sc*0.4*w;
@@ -2043,7 +2046,7 @@ function chartLink(o){
     if(zl.length<2)zl.push('流年、流月四化沒有直接落入相關宮位，紫微這邊屬於平常的狀態。');
   }catch(e){zl.push('（紫微流年計算失敗）')}
   zs=Math.max(-3,Math.min(3,zs));total+=zs;
-  parts.push(`<p class="small"><b>紫微（${t.p[0]}宮・${o.date.slice(0,4)} 流年）</b> ${badge(zs)}<br>${zl.map(esc).join('<br>')}</p>`);
+  if(A)parts.push(`<p class="small"><b>紫微（${t.p[0]}宮・${o.date.slice(0,4)} 流年）</b> ${badge(zs)}<br>${zl.map(esc).join('<br>')}</p>`);
   // 八字
   let bs=0;const bl=[];
   (o.wx||[]).forEach(([w,wt,lab])=>{if(!w)return;if(BZ.xi.includes(w)){bs+=wt;bl.push(`${lab}屬${w}，是你的喜用神，有幫助`)}else if(BZ.ji.includes(w)){bs-=wt;bl.push(`${lab}屬${w}，是你的忌神，要多留意`)}else bl.push(`${lab}屬${w}，對你影響中性`)});
@@ -2053,7 +2056,7 @@ function chartLink(o){
   parts.push(`<p class="small"><b>八字（日主${BZ.dm}${BZ.dmw}，${BZ.strong?'身強':'身弱'}，喜${BZ.xi.join('')}、忌${BZ.ji.join('')}）</b> ${badge(bs)}<br>${bl.join('；')}。</p>`);
   // 星座
   let ws=0;const wl=[];
-  const H=HOUSE_OF[t.n]||1, hs=(WS.ascS+H-1)%12;
+  const H=HOUSE_OF[t.n]||1, base=WS.ascS==null?WS.P.find(p=>p.n==='太陽').sign:WS.ascS, hs=(base+H-1)%12;
   try{
     const [yy,mm,dd]=o.date.split('-').map(Number);const tp=ASTRO.planets(ASTRO.jdUT(yy,mm,dd,4));
     const sg=l=>Math.floor(l/30);
@@ -2063,10 +2066,10 @@ function chartLink(o){
     if(inH('金星')){ws+=0.5;wl.push(`行運金星經過第${H}宮，人緣與財氣加分`)}
     if(inH('火星')){ws-=0.3;wl.push(`行運火星經過第${H}宮，衝勁強但容易衝突`)}
     if(tp['太陽']&&sg(tp['太陽'].lon)===hs){ws+=0.3;wl.push(`太陽正走第${H}宮，這是當前的焦點`)}
-    const nat=WS.P.filter(p=>p.house===H&&['太陽','月亮','水星','金星','火星','木星','土星'].includes(p.n)).map(p=>p.n);
-    wl.unshift(`問「${t.n}」看第${H}宮（${WEST.SIGNS[hs].n}）${nat.length?`，本命有${nat.join('、')}坐守`:''}`);
+    const nat=WS.P.filter(p=>((p.sign-base+12)%12)+1===H&&['太陽','月亮','水星','金星','火星','木星','土星'].includes(p.n)).map(p=>p.n);
+    wl.unshift(`問「${t.n}」看第${H}宮（${WEST.SIGNS[hs].n}${WS.ascS==null?'，時辰不詳改用太陽星座為第一宮估算':''}）${nat.length?`，本命有${nat.join('、')}坐守`:''}`);
   }catch(e){wl.push('（行運計算失敗）')}
-  (o.signs||[]).forEach(([si,lab])=>{const hit=[['太陽',WS.P.find(p=>p.n==='太陽').sign],['月亮',WS.P.find(p=>p.n==='月亮').sign],['上升',WS.ascS]].filter(x=>x[1]===si).map(x=>x[0]);
+  (o.signs||[]).forEach(([si,lab])=>{const hit=[['太陽',WS.P.find(p=>p.n==='太陽').sign],['月亮',WS.P.find(p=>p.n==='月亮').sign],['上升',WS.ascS]].filter(x=>x[1]!=null&&x[1]===si&&!(x[0]==='月亮'&&WS.moonAlt)).map(x=>x[0]);
     if(hit.length){ws+=0.7;wl.push(`${lab}對應${WEST.SIGNS[si].n}，正好是你的${hit.join('、')}星座，這張牌和你本人特別有關`)}});
   if(o.el){const cnt=WS.P.filter(p=>['太陽','月亮','水星','金星','火星'].includes(p.n)&&WEST.SIGNS[p.sign].el===o.el).length;
     wl.push(cnt>=2?`牌面以${o.el}元素為主，你的本命也偏${o.el}（${cnt} 顆個人行星），容易產生共鳴`:cnt===0?`牌面以${o.el}元素為主，但你的本命缺${o.el}，這是要學習的課題`:`牌面以${o.el}元素為主`)}
@@ -2077,7 +2080,7 @@ function chartLink(o){
 function verdictHTML(divSc,link,name){
   const tot=divSc*1.5+(link.has?link.score:0);const [g]=GRADE(tot/(link.has?2:1.5));
   const adv={大吉:'天時（占卜）與本命流年都站在你這邊，可以積極進行，但仍要照計畫控管風險。',吉:'整體偏順，可以正常推進、適度爭取。',平:'好壞參半，照原計畫走，不必勉強，也不用過度擔心。',小凶:'阻力較多，宜保守、多做準備，重大決定可以延後。',凶:'時機不利，宜守不宜攻，避免冒險和重大承諾。'}[g];
-  return `<h3>綜合判斷</h3><p>${badge(tot/(link.has?2:1.5))} ${adv}</p><p class="small mute">權重：${name} 1.5、紫微 1、八字 0.7、星座 0.5。${link.has?'':'尚未排盤，只依占卜結果判斷。'}占卜是整理思緒的參考，重要決定請以實際資訊與專業意見為準。</p>`;
+  return `<h3>綜合判斷</h3><p>${badge(tot/(link.has?2:1.5))} ${adv}</p><p class="small mute">權重：${name} 1.5、${A?'紫微 1、':''}八字 0.7、星座 0.5${A?'':'（時辰不詳，未含紫微）'}。${link.has?'':'尚未排盤，只依占卜結果判斷。'}占卜是整理思緒的參考，重要決定請以實際資訊與專業意見為準。</p>`;
 }
 
 // ---------- 塔羅牌面（本工具原創的簡化圖案） ----------
@@ -2265,7 +2268,7 @@ const GE={'丙戊':['飛鳥跌穴',1],'戊丙':['青龍返首',1],'乙辛':['青
 function qimenHTML(ti,q,topic){
   const Q=qimen(ti);
   let s=(q?`<p><b>問：</b>${esc(q)}</p>`:'')+`<p class="small mute">起局：${ti.label}，${JQ[Q.k]}${['上','中','下'][Q.yuan]}元，${Q.yang?'陽':'陰'}遁${Q.ju}局；${Q.hgz}時旬首${Q.xunYi}，值符${Q.zhiFu}、值使${Q.zhiShi}；空亡在${Q.kong.map(p=>GONG_N[p]).join('、')}宮，驛馬在${GONG_N[Q.ma]}宮。類別：${topic.n}</p>`;
-  const nianGan=A&&BZ?BZ.P[0][0]:null;const ngStem=nianGan==='甲'?'戊':nianGan;let ngP=ngStem?Q.stemPal(ngStem):null;
+  const nianGan=BZ?BZ.P[0][0]:null;const ngStem=nianGan==='甲'?'戊':nianGan;let ngP=ngStem?Q.stemPal(ngStem):null;
   // 年命在天盤：找天盤干含年命干的宮
   let mingP=null;if(ngStem){for(const p of RING)if((Q.tianGan[p]||'').includes(ngStem)){mingP=p;break}}
   const [ut,uv]=QM_USE[topic.n]||['door','開門'];
@@ -2347,7 +2350,7 @@ function taiyiHTML(ti,q,topic){
   const g=tyGe(c), gy=tyGe(y);
   s+=`<h3>局象判斷</h3><p class="small"><b>時計（所問之事）：</b></p>${g.n.map(x=>`<p class="small">・${x}。</p>`).join('')}<p class="small"><b>年計（今年大環境）：</b>${gy.n.slice(0,3).join('；')}。</p>`;
   let sc=g.sc+gy.sc*0.3;
-  if(A&&BZ){const bi=BZ.P[0];const by=+$('y').value&&($('era').value==='roc'?+$('y').value+1911:+$('y').value);
+  if(BZ&&BIRTH){const bi=BZ.P[0];const by=BIRTH.y;
     if(by){const bc=tyCore((by+10153917)%72||72,true);const r=rel(TY_W[bc.taiyi],TY_W[c.taiyi]);
       s+=`<p class="small"><b>和你的出生年局對照：</b>你出生那年太乙在${TY_GN[bc.taiyi]}宮（${TY_W[bc.taiyi]}），這次時計太乙在${TY_GN[c.taiyi]}宮（${TY_W[c.taiyi]}），關係是「${{比和:'同氣，順著本命的步調',我生:'要你多付出',生我:'時勢生扶本命，有利',我剋:'你能駕馭時勢',剋我:'時勢壓本命，宜謹慎'}[r]}」。</p>`;
       sc+=r==='生我'||r==='比和'?0.4:r==='剋我'?-0.4:0}}
@@ -2404,6 +2407,7 @@ const TYPES={love:{n:'感情・婚姻',w:{zw:0.3,bz:0.3,ws:0.25,yj:0.15},pal:'�
 // ---------- 建立一個人的四套命盤 ----------
 function person(o){
   const [y,m,d]=o.date.split('-').map(Number);const ti=+o.ti;
+  if(o.noHour){const BZ2=BAZI.compute({y,m,d,hh:12,mm:0,tz:8,dst:false,gender:o.gender,noHour:true});return {name:o.name,gender:o.gender,A:null,BZ:BZ2,WS:NH.westNoHour(y,m,d),G:null,exact:false,noHour:true}}
   const A2=iztro.astro.bySolar(`${y}-${m}-${d}`,ti,o.gender,true,'zh-TW');
   let hh,mm;if(o.time){[hh,mm]=o.time.split(':').map(Number)}else if(ti===0){hh=0;mm=30}else if(ti===12){hh=23;mm=30}else{hh=ti*2;mm=0}
   const BZ2=BAZI.compute({y,m,d,hh,mm,tz:8,dst:false,gender:o.gender});
@@ -2413,7 +2417,7 @@ function person(o){
   return {name:o.name,gender:o.gender,A:A2,BZ:BZ2,WS:{P,ascS},G:gua(`${y}-${m}-${d}`,ti),exact:!!o.time};
 }
 function gua(date,ti){const r=YJ.timeCast(date,ti);const b=YJ.hex(r.code),z=YJ.hex(YJ.flip(r.code,r.moving)),ty=YJ.tiyong(r.code,r.dong);return {r,b,z,ty}}
-function me(){return {name:'你',gender:A.gender,A,BZ,WS,G:gua(A.solarDate,+$('t').value),exact:!!$('bt').value}}
+function me(){if(NOHOUR)return {name:'你',gender:NOHOUR.gender,A:null,BZ,WS,G:null,exact:false,noHour:true};return {name:'你',gender:A.gender,A,BZ,WS,G:gua(A.solarDate,+$('t').value),exact:!!$('bt').value}}
 
 // ---------- 紫微 ----------
 const allS=p=>[...p.majorStars,...p.minorStars];
@@ -2493,21 +2497,21 @@ function ws(X,Y,T){
   const sx=g(X.WS,'太陽').sign,sy=g(Y.WS,'太陽').sign;const e=ELOK(elOf(sx),elOf(sy));
   sc+=e==='同'?6:e==='合'?5:-3;
   lines.push(`太陽：${X.name}${WEST.SIGNS[sx].n}（${elOf(sx)}）、${Y.name}${WEST.SIGNS[sy].n}（${elOf(sy)}），${e==='同'?'同元素，想法接近':e==='合'?'元素相合，互相欣賞':'元素不同，需要學習對方的節奏'}。`);
-  const mx=g(X.WS,'月亮').sign,my=g(Y.WS,'月亮').sign;const em=ELOK(elOf(mx),elOf(my));sc+=em==='異'?-2:3;
-  lines.push(`月亮（情緒需求）：${WEST.SIGNS[mx].n}與${WEST.SIGNS[my].n}，${em==='異'?'安全感來源不同，要說出口':'情緒上容易懂彼此'}。`);
+  const mx=g(X.WS,'月亮').sign,my=g(Y.WS,'月亮').sign;const em=ELOK(elOf(mx),elOf(my));const moonOK=!X.WS.moonAlt&&!Y.WS.moonAlt;if(moonOK)sc+=em==='異'?-2:3;
+  if(moonOK)lines.push(`月亮（情緒需求）：${WEST.SIGNS[mx].n}與${WEST.SIGNS[my].n}，${em==='異'?'安全感來源不同，要說出口':'情緒上容易懂彼此'}。`);
   const good=[],hard=[];
   const pairs=[['太陽','月亮',10,'一方的本質正好滿足另一方的情感需求，是經典的伴侶相位'],['月亮','太陽',10,'一方的本質正好滿足另一方的情感需求，是經典的伴侶相位'],['金星','火星',8,'彼此有吸引力與熱情'],['火星','金星',8,'彼此有吸引力與熱情'],['月亮','月亮',5,'情緒步調一致'],['金星','金星',4,'喜好與價值觀相近'],['水星','水星',3,'溝通順暢、聊得來'],['太陽','太陽',3,'人生方向相近']];
-  pairs.forEach(([a,b,w,txt])=>{const t=asp(g(X.WS,a).lon,g(Y.WS,b).lon);if(!t)return;
+  pairs.forEach(([a,b,w,txt])=>{if((a==='月亮'&&X.noHour)||(b==='月亮'&&Y.noHour))return;const t=asp(g(X.WS,a).lon,g(Y.WS,b).lon);if(!t)return;
     if(['合相','三分相','六分相'].includes(t)){sc+=w*(t==='合相'?1:0.8);good.push(`${X.name}的${a}與${Y.name}的${b}${t}：${txt}`)}
     else if(t==='對分相'){sc+=w*0.3;good.push(`${X.name}的${a}與${Y.name}的${b}對分相：互補又互相拉扯`)}
     else{sc-=w*0.4;hard.push(`${X.name}的${a}與${Y.name}的${b}四分相：有火花也有摩擦`)}});
-  [[X,Y],[Y,X]].forEach(([P,Q])=>{const sat=g(P.WS,'土星');PERS.forEach(n=>{const t=asp(sat.lon,g(Q.WS,n).lon);if(!t)return;
+  [[X,Y],[Y,X]].forEach(([P,Q])=>{const sat=g(P.WS,'土星');PERS.forEach(n=>{if(n==='月亮'&&Q.noHour)return;const t=asp(sat.lon,g(Q.WS,n).lon);if(!t)return;
     if(['合相','四分相','對分相'].includes(t)){sc-=4;hard.push(`${P.name}的土星與${Q.name}的${n}${t}：${P.name}會給${Q.name}壓力或責任感，關係穩但沉重`)}
     else{sc+=2;good.push(`${P.name}的土星與${Q.name}的${n}${t}：關係有承諾、能長久`)}})});
-  [[X,Y],[Y,X]].forEach(([P,Q])=>{const h=PERS.filter(n=>g(P.WS,n).sign===(Q.WS.ascS+(T.pal==='夫妻'?6:T.pal==='官祿'?9:10))%12);
+  [[X,Y],[Y,X]].forEach(([P,Q])=>{if(Q.WS.ascS==null)return;const h=PERS.filter(n=>!(n==='月亮'&&P.noHour)).filter(n=>g(P.WS,n).sign===(Q.WS.ascS+(T.pal==='夫妻'?6:T.pal==='官祿'?9:10))%12);
     if(h.length){sc+=4;good.push(`${P.name}的${h.join('、')}落在${Q.name}的第${T.pal==='夫妻'?7:T.pal==='官祿'?10:11}宮（${T.pal==='夫妻'?'伴侶宮':T.pal==='官祿'?'事業宮':'朋友宮'}）`)}});
   lines.push(...good.slice(0,6).map(x=>'✓ '+x+'。'),...hard.slice(0,4).map(x=>'△ '+x+'。'));
-  if(!X.exact||!Y.exact)lines.push('（有人沒填精確出生時間，上升與宮位相關的部分僅供參考。）');
+  if(X.noHour||Y.noHour)lines.push('（有人時辰不詳：略過上升、宮位與月亮相關的比對。）');else if(!X.exact||!Y.exact)lines.push('（有人沒填精確出生時間，上升與宮位相關的部分僅供參考。）');
   return {sc:clamp(sc),lines};
 }
 
@@ -2531,16 +2535,20 @@ function yj(X,Y,T){
 
 // ---------- 組合 ----------
 function analyze(X,Y,tk){
-  const T=TYPES[tk];const r={zw:zw(X,Y,T),bz:bz(X,Y,T),ws:ws(X,Y,T),yj:yj(X,Y,T)};
-  r.total=Math.round(Object.entries(T.w).reduce((s,[k,w])=>s+r[k].sc*w,0));
+  const T=TYPES[tk];const r={bz:bz(X,Y,T),ws:ws(X,Y,T)};
+  const nh=`${[X,Y].filter(p=>p.noHour).map(p=>p.name).join('、')}時辰不詳，`;
+  r.zw=X.A&&Y.A?zw(X,Y,T):{sc:null,lines:[nh+'無法做紫微合盤。']};
+  r.yj=X.G&&Y.G?yj(X,Y,T):{sc:null,lines:[nh+'無法排本命卦，略過易經合盤。']};
+  const av=Object.entries(T.w).filter(([k])=>r[k].sc!=null), ws_=av.reduce((s,[,w])=>s+w,0);
+  r.total=Math.round(av.reduce((s,[k,w])=>s+r[k].sc*w,0)/ws_);r.used=av.map(([k])=>k);
   return r;
 }
 const lv=s=>s>=75?['非常契合','var(--lu)']:s>=62?['契合','var(--lu)']:s>=48?['普通，需經營','var(--ke)']:s>=35?['磨合較多','var(--quan)']:['挑戰大','var(--ji)'];
 const SYS=[['zw','紫微'],['bz','八字'],['ws','星座'],['yj','易經']];
-function bar(s){const [t,c]=lv(s);return `<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:8px;background:var(--line);border-radius:4px;overflow:hidden;min-width:60px"><div style="width:${s}%;height:100%;background:${c}"></div></div><b style="min-width:28px">${s}</b></div>`}
-function detail(X,Y,r){return SYS.map(([k,n])=>`<h3>${n}合盤 <span class="badge" style="background:${lv(r[k].sc)[1]}">${r[k].sc}・${lv(r[k].sc)[0]}</span></h3>${r[k].lines.map(l=>`<p class="small">・${l}</p>`).join('')}`).join('')}
+function bar(s){if(s==null)return '<span class="mute small">—（時辰不詳）</span>';const [t,c]=lv(s);return `<div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:8px;background:var(--line);border-radius:4px;overflow:hidden;min-width:60px"><div style="width:${s}%;height:100%;background:${c}"></div></div><b style="min-width:28px">${s}</b></div>`}
+function detail(X,Y,r){return SYS.map(([k,n])=>`<h3>${n}合盤 ${r[k].sc==null?'<span class="small mute">（略過）</span>':`<span class="badge" style="background:${lv(r[k].sc)[1]}">${r[k].sc}・${lv(r[k].sc)[0]}</span>`}</h3>${r[k].lines.map(l=>`<p class="small">・${l}</p>`).join('')}`).join('')}
 function advice(r,T,Y){
-  const best=SYS.slice().sort((a,b)=>r[b[0]].sc-r[a[0]].sc), lo=best[3], hi=best[0];
+  const best=SYS.filter(([k])=>r[k].sc!=null).sort((a,b)=>r[b[0]].sc-r[a[0]].sc), lo=best[best.length-1], hi=best[0];
   return `<p class="small"><b>相處建議：</b>你們最合的是「${hi[1]}」所看的面向${{zw:'（個性與命運的交集）',bz:'（本質與五行互補）',ws:'（情感與吸引力）',yj:'（彼此的能量互動）'}[hi[0]]}，最需要經營的是「${lo[1]}」${{zw:'：在${T.pal}相關的事上多溝通、不要預設對方的想法',bz:'：生活節奏與家庭觀念要先講清楚',ws:'：情緒需求不同，要把感受說出口',yj:'：注意誰付出比較多，保持平衡'}[lo[0]].replace('${T.pal}',T.pal)}。</p>`;
 }
 
@@ -2549,26 +2557,26 @@ function formHTML(i){return `<div class="hit" style="border-color:var(--line)"><
   <div class="row small" style="margin-top:6px"><label>稱呼</label><input id="hp${i}N" maxlength="8" style="width:90px" placeholder="${i===1?'對象一':'對象二'}">
   <label>性別</label><select id="hp${i}G"><option>女</option><option>男</option></select></div>
   <div class="row small" style="margin-top:6px"><label>國曆生日</label><input id="hp${i}D" type="date" min="1900-01-01" max="2100-12-31">
-  <label>時辰</label><select id="hp${i}T">${TIME_NAMES.map((n,k)=>`<option value="${k}">${n}</option>`).join('')}</select></div>
+  <label>時辰</label><select id="hp${i}T">${TIME_NAMES.map((n,k)=>`<option value="${k}">${n}</option>`).join('')}</select><label><input type="checkbox" id="hp${i}U"> 時辰不詳</label></div>
   <div class="row small" style="margin-top:6px"><label>精確時間</label><input id="hp${i}E" type="time" style="width:110px"><label>出生地</label><select id="hp${i}P">${Object.keys(PLACES).map(k=>`<option>${k}</option>`).join('')}</select></div></div>`}
 function readForm(i){const d=$(`hp${i}D`).value;if(!d)return null;const e=$(`hp${i}E`).value;let ti=+$(`hp${i}T`).value;
   if(e){const hh=+e.split(':')[0];ti=hh===0?0:hh===23?12:Math.floor((hh+1)/2)}
-  return {name:esc($(`hp${i}N`).value.trim())||(i===1?'對象一':'對象二'),gender:$(`hp${i}G`).value,date:d,ti,time:e,place:$(`hp${i}P`).value}}
+  const nh=$(`hp${i}U`).checked;return {name:esc($(`hp${i}N`).value.trim())||(i===1?'對象一':'對象二'),gender:$(`hp${i}G`).value,date:d,ti,time:nh?'':e,place:$(`hp${i}P`).value,noHour:nh}}
 function run(){
   const out=$('hpOut');
-  if(!A||!BZ||!WS){out.innerHTML='<p class="small" style="color:var(--ji)">請先在上方輸入「你」的生辰並按「排盤」。</p>';return}
+  if(!BZ||!WS){out.innerHTML='<p class="small" style="color:var(--ji)">請先在上方輸入「你」的生辰並按「排盤」。</p>';return}
   const f1=readForm(1),f2=readForm(2);if(!f1){out.innerHTML='<p class="small" style="color:var(--ji)">請至少填對象一的生日。</p>';return}
   const tk=$('hpType').value,T=TYPES[tk];
   const M=me();const P1=person(f1),P2=f2?person(f2):null;
   const r1=analyze(M,P1,tk),r2=P2?analyze(M,P2,tk):null;
   let s=`<h3>${T.n}合盤結果</h3>`;
   s+=`<table class="small" style="width:100%"><tr><th style="text-align:left">系統</th><th>你 × ${P1.name}</th>${P2?`<th>你 × ${P2.name}</th>`:''}</tr>`+SYS.map(([k,n])=>`<tr><td>${n}</td><td>${bar(r1[k].sc)}</td>${P2?`<td>${bar(r2[k].sc)}</td>`:''}</tr>`).join('')+`<tr><td><b>綜合</b></td><td>${bar(r1.total)}</td>${P2?`<td>${bar(r2.total)}</td>`:''}</tr></table>`;
-  s+=`<p class="small mute">權重（${T.n}）：紫微 ${T.w.zw*100}%、八字 ${T.w.bz*100}%、星座 ${T.w.ws*100}%、易經 ${T.w.yj*100}%。</p>`;
+  s+=`<p class="small mute">權重（${T.n}）：紫微 ${T.w.zw*100}%、八字 ${T.w.bz*100}%、星座 ${T.w.ws*100}%、易經 ${T.w.yj*100}%${r1.used.length<4||(r2&&r2.used.length<4)?'；有人時辰不詳時，綜合分數只用可計算的系統，按比例重新分配權重':''}。</p>`;
   if(P2){
     const d=r1.total-r2.total, W=d>=0?[P1,r1,P2,r2]:[P2,r2,P1,r1];
-    const wins=SYS.filter(([k])=>W[1][k].sc>W[3][k].sc).map(x=>x[1]), loses=SYS.filter(([k])=>W[1][k].sc<W[3][k].sc).map(x=>x[1]);
+    const cmp=SYS.filter(([k])=>W[1][k].sc!=null&&W[3][k].sc!=null);const wins=cmp.filter(([k])=>W[1][k].sc>W[3][k].sc).map(x=>x[1]), loses=cmp.filter(([k])=>W[1][k].sc<W[3][k].sc).map(x=>x[1]);
     s+=`<div class="hit" style="border-color:var(--acc)"><b>誰比較適合你？</b><p>${Math.abs(d)<4?`兩人分數很接近（${r1.total} 比 ${r2.total}），命理上差別不大，`:`綜合來看，<b>${W[0].name}</b>（${W[1].total} 分）比 ${W[2].name}（${W[3].total} 分）更適合你，`}${wins.length?`${W[0].name}在${wins.join('、')}占優勢`:''}${loses.length?`；${W[2].name}則在${loses.join('、')}較好`:''}。</p>
-    <p class="small">${Math.abs(d)<4?'建議回到現實面：相處的感受、價值觀和生活規劃，比分數差幾分更重要。':`${W[0].name}的優勢在於：${(SYS.map(([k])=>[k,W[1][k].sc-W[3][k].sc]).sort((a,b)=>b[1]-a[1])[0][0]==='zw'?'命盤上彼此的位置更對應':SYS.map(([k])=>[k,W[1][k].sc-W[3][k].sc]).sort((a,b)=>b[1]-a[1])[0][0]==='bz'?'八字五行更互補、日柱更合':SYS.map(([k])=>[k,W[1][k].sc-W[3][k].sc]).sort((a,b)=>b[1]-a[1])[0][0]==='ws'?'星盤吸引力與情感相位更好':'本命卦的能量更相生')}。`}</p></div>`;
+    <p class="small">${Math.abs(d)<4?'建議回到現實面：相處的感受、價值觀和生活規劃，比分數差幾分更重要。':`${W[0].name}的優勢在於：${(cmp.map(([k])=>[k,W[1][k].sc-W[3][k].sc]).sort((a,b)=>b[1]-a[1])[0][0]==='zw'?'命盤上彼此的位置更對應':cmp.map(([k])=>[k,W[1][k].sc-W[3][k].sc]).sort((a,b)=>b[1]-a[1])[0][0]==='bz'?'八字五行更互補、日柱更合':cmp.map(([k])=>[k,W[1][k].sc-W[3][k].sc]).sort((a,b)=>b[1]-a[1])[0][0]==='ws'?'星盤吸引力與情感相位更好':'本命卦的能量更相生')}。`}</p></div>`;
   }
   const sec=(P,r)=>`<details${P2?'':' open'}><summary><b>你 × ${P.name}：詳細解釋（${r.total} 分・${lv(r.total)[0]}）</b></summary>${detail(M,P,r)}${advice(r,T,P)}</details>`;
   s+=sec(P1,r1)+(P2?sec(P2,r2):'');
@@ -2586,6 +2594,115 @@ function init(){
 }
 return {init,person,analyze,me};
 })();
+</script>
+<script>// ===== 時辰不詳：只產出不需要時辰的資料（八字三柱、星座無上升宮位、生年四化等） =====
+let NOHOUR=null;
+const NH=(function(){
+const S=()=>WEST.SIGNS;
+// 星盤（中午計算；月亮檢查當天是否換星座；不算上升與宮位）
+function westNoHour(y,m,d){
+  const jd=ASTRO.jdUT(y,m,d,12-8), pl=ASTRO.planets(jd);
+  const sg=l=>Math.floor(l/30);
+  const P=Object.entries(pl).map(([n,v])=>({n,lon:v.lon,retro:v.retro,sign:sg(v.lon),deg:v.lon%30,house:null}));
+  const m0=sg(ASTRO.planets(ASTRO.jdUT(y,m,d,0-8))['月亮'].lon), m1=sg(ASTRO.planets(ASTRO.jdUT(y,m,d,23.98-8))['月亮'].lon);
+  const s0=sg(ASTRO.planets(ASTRO.jdUT(y,m,d,0-8))['太陽'].lon), s1=sg(ASTRO.planets(ASTRO.jdUT(y,m,d,23.98-8))['太陽'].lon);
+  const asp=[];const ANG=[['合相',0,8],['六分相',60,5],['四分相',90,7],['三分相',120,7],['對分相',180,8]];
+  const main=P.filter(p=>['太陽','水星','金星','火星','木星','土星'].includes(p.n));
+  for(let i=0;i<main.length;i++)for(let j=i+1;j<main.length;j++){let dd=Math.abs(main[i].lon-main[j].lon);if(dd>180)dd=360-dd;for(const [an,a,orb] of ANG)if(Math.abs(dd-a)<=orb)asp.push({a:main[i].n,b:main[j].n,t:an,orb:Math.abs(dd-a)})}
+  return {P,asc:null,mc:null,ascS:null,mcS:null,asp,jd,noHour:true,moonAlt:m0!==m1?[m0,m1]:null,sunAlt:s0!==s1?[s0,s1]:null};
+}
+function moonText(W){const mo=W.P.find(p=>p.n==='月亮');return W.moonAlt?`${S()[W.moonAlt[0]].n}或${S()[W.moonAlt[1]].n}`:S()[mo.sign].n}
+// 以太陽星座當第一宮（太陽宮位制），給占卜與合盤估算用
+function solarHouse(W,sign){const sun=W.P.find(p=>p.n==='太陽').sign;return ((sign-sun+12)%12)+1}
+
+// ---------- 排盤流程 ----------
+function setup(){
+  const t=$('t');const lab=document.createElement('label');lab.className='small';lab.style.marginLeft='6px';
+  lab.innerHTML='<input type="checkbox" id="tUnk"> 時辰不詳';t.after(lab);
+  $('tUnk').onchange=()=>{const on=$('tUnk').checked;t.disabled=on;$('bt').disabled=on;if(on)$('bt').value=''};
+  const go=$('go').onclick;
+  $('go').onclick=()=>{
+    if(!$('tUnk').checked){NOHOUR=null;return go()}
+    const y=adYear(),m=+$('mo').value,d=+$('d').value,g=$('g').value;
+    if(!y||!m||!d){toast('請輸入完整的年、月、日');return}
+    if(y<1900||y>2100){toast('年份換算為西元 '+y+' 年，超出可排範圍（西元 1900–2100）。請確認「民國／西元」是否選對。');return}
+    let A0;try{A0=$('mode').value==='solar'?iztro.astro.bySolar(`${y}-${m}-${d}`,6,g,true,LANG):iztro.astro.byLunar(`${y}-${m}-${d}`,6,g,$('leap').checked,true,LANG)}catch(e){toast('排盤失敗：'+e.message);return}
+    const sihua=[];A0.palaces.forEach(p=>[...p.majorStars,...p.minorStars].forEach(s=>{if(s.mutagen)sihua.push([s.mutagen,s.name])}));
+    sihua.sort((a,b)=>'祿權科忌'.indexOf(a[0])-'祿權科忌'.indexOf(b[0]));
+    NOHOUR={solarDate:A0.solarDate,lunar:A0.lunarDate,yearGZ:A0.rawDates.chineseDate.yearly.join(''),zodiac:A0.zodiac,gender:g,sihua};
+    A=null;selIdx=null;renderAll();
+  };
+  const ce=computeExtra;
+  computeExtra=function(){
+    if(!NOHOUR)return ce();
+    const [y,m,d]=NOHOUR.solarDate.split('-').map(Number);
+    BIRTH={y,m,d,hh:12,mm:0,exact:false,tz:8,dst:false,gender:NOHOUR.gender,noHour:true,place:'—'};
+    BZ=BAZI.compute({y,m,d,hh:12,mm:0,tz:8,dst:false,gender:NOHOUR.gender,noHour:true});
+    WS=westNoHour(y,m,d);
+  };
+  const rb=renderBazi;renderBazi=function(){rb();if(!NOHOUR||!BZ)return;const el=$('bazi');const p=el.querySelector('p.small.mute');
+    if(p)p.innerHTML=`${BIRTH.y}-${BIRTH.m}-${BIRTH.d}，<b>時辰不詳</b>：只排年、月、日三柱，時柱不計入五行與十神。`;
+    el.insertAdjacentHTML('afterbegin',`<div class="hit" style="border-color:var(--quan)"><p class="small">時辰不詳時：日主、格局大致可信；喜用神、子女與晚年的判斷可能有誤差；大運起運歲數可能差幾個月。若其實是在晚上 11 點後出生，日柱會換成隔天。</p></div>`)};
+  const rw=renderWest;renderWest=function(){if(!NOHOUR)return rw();renderWestNH()};
+  const ri=renderInt;renderInt=function(){if(!NOHOUR)return ri();renderIntNH()};
+  const ry=renderYjm;renderYjm=function(){if(!NOHOUR)return ry();renderYjmNH()};
+  const ra=renderAll;renderAll=function(){ra();notices()};
+}
+function banner(id,html){const sec=$('tab-'+id);if(!sec)return;let b=sec.querySelector('.nhNote');if(!NOHOUR){if(b)b.remove();return}
+  if(!b){b=document.createElement('div');b.className='card nhNote';sec.prepend(b)}b.innerHTML=html}
+function notices(){
+  const zwMsg=`<p><b>時辰不詳，無法排紫微斗數命盤。</b></p><p class="small">紫微的命宮由出生月份和時辰決定，時辰不同，命宮、主星、大限都會不同，所以這一頁不顯示。八字、星座、合盤、占卜仍可使用（只用不需要時辰的部分）。</p>`;
+  if(NOHOUR){
+    const L=NOHOUR.lunar;
+    $('grid').innerHTML=`<div class="center" style="grid-column:1/5;grid-row:1/5;padding:12px"><p><b>時辰不詳</b>：只能提供不需要時辰的資料</p><p class="small">國曆 ${NOHOUR.solarDate}・農曆 ${L}<br>${NOHOUR.yearGZ}年，屬${NOHOUR.zodiac}</p><p class="small"><b>生年四化：</b>${NOHOUR.sihua.map(([t,s])=>`${s}化${t}`).join('、')}<br><span class="mute">（四化是哪幾顆星可以確定，但落在哪一宮要有時辰才知道）</span></p><p class="small mute">紫微命宮由月份與時辰決定，無法排出十二宮。</p></div>`;
+    ['palaceDetail','geju','natal'].forEach(id=>{const e=$(id);if(e)e.innerHTML=zwMsg});
+  }
+  banner('ask',zwMsg);banner('ln',zwMsg);
+}
+// ---------- 星座（無上升） ----------
+function renderWestNH(){
+  const el=$('west');if(!WS){el.innerHTML='<span class="mute">請先輸入生辰並排盤。</span>';return}
+  const s0=S(),g=n=>WS.P.find(p=>p.n===n),sun=g('太陽'),moon=g('月亮');
+  let s=`<h2>西洋星盤（時辰不詳）</h2><div class="hit" style="border-color:var(--quan)"><p class="small">沒有出生時間，<b>上升星座、天頂與十二宮都無法計算</b>；行星位置以出生日中午估算（月亮以外的誤差很小）。</p></div>`;
+  s+=`<div class="hit" style="border-color:#e6a100"><b>太陽 ${s0[sun.sign].s} ${s0[sun.sign].n}</b>${WS.sunAlt?`<span class="small" style="color:var(--quan)">（當天剛好換星座，可能是${s0[WS.sunAlt[0]].n}或${s0[WS.sunAlt[1]].n}）</span>`:''}<br>${s0[sun.sign].core}</div>`;
+  s+=WS.moonAlt?`<div class="hit" style="border-color:#888"><b>月亮：${moonText(WS)}</b><br><span class="small">出生當天月亮換了星座，要看出生時間才能確定。</span><br><b>${s0[WS.moonAlt[0]].n}：</b>${s0[WS.moonAlt[0]].emo}<br><b>${s0[WS.moonAlt[1]].n}：</b>${s0[WS.moonAlt[1]].emo}</div>`:`<div class="hit" style="border-color:#888"><b>月亮 ${s0[moon.sign].s} ${s0[moon.sign].n}</b>（當天都在這個星座，可確定）<br>${s0[moon.sign].emo}</div>`;
+  s+=`<h3>行星位置（不含宮位）</h3><table><tr><th>行星</th><th>星座</th></tr>${WS.P.map(p=>`<tr><td>${p.n}${p.retro?' <span class="small" style="color:var(--ji)">逆</span>':''}</td><td>${p.n==='月亮'?moonText(WS):s0[p.sign].n}</td></tr>`).join('')}</table>`;
+  const pi=(n,f)=>{const p=g(n);return `<p><b>${n}在${s0[p.sign].n}</b>（${WEST.PLANET[n]}）：${s0[p.sign][f]}</p>`};
+  s+=`<h3>個人行星</h3>${pi('水星','comm')}${pi('金星','love')}${pi('火星','act')}`;
+  if(WS.asp.length)s+=`<h3>主要相位（不含月亮）</h3>${WS.asp.sort((a,b)=>a.orb-b.orb).slice(0,8).map(a=>`<p class="small"><b>${a.a} ${a.t} ${a.b}</b>：${WEST.PLANET[a.a].split('與')[0]}與${WEST.PLANET[a.b].split('與')[0]}之間${WEST.ASPECT[a.t]}。</p>`).join('')}`;
+  el.innerHTML=s;
+}
+// ---------- 整合（八字＋星座） ----------
+function renderIntNH(){
+  const el=$('int');if(!BZ||!WS){el.innerHTML='<span class="mute">請先輸入生辰並按「排盤」。</span>';return}
+  const bz={},ws={},s0=S(),g=n=>WS.P.find(p=>p.n===n);
+  addT(bz,BZ_EL[BZ.dmw],1.5);const tot=BZ.ssList.reduce((a,x)=>a+x[1],0);BZ.ssList.forEach(([k,v])=>addT(bz,BZ_SS[k],v/tot*4));
+  [['太陽',2],['月亮',WS.moonAlt?0:1.5],['水星',0.5],['金星',0.5],['火星',0.5]].forEach(([n,wt])=>{if(!wt)return;const sg=s0[g(n).sign];addT(ws,W_EL[sg.el],wt);addT(ws,W_MOD[sg.mod],wt)});
+  const B=normT(bz),W=normT(ws),C={};TRAITS.forEach(k=>C[k]=(B[k]+W[k])/2);
+  const rank=v=>[...TRAITS].sort((a,b)=>v[b]-v[a]);const rb=rank(B),rw=rank(W),rc=rank(C);
+  const both=TRAITS.filter(k=>rb.slice(0,3).includes(k)&&rw.slice(0,3).includes(k));
+  let s=`<h2>整合分析（八字・星座）</h2><div class="hit" style="border-color:var(--quan)"><p class="small">時辰不詳，紫微斗數與易經本命卦需要時辰，這裡只整合八字（年月日三柱）與星座（不含上升）兩套方法。</p></div>`;
+  s+=`<div class="hit 科" style="border-color:var(--acc)"><b>一句話：</b>${both.length?`八字和星座都指向「${both.join('、')}」`:'兩套方法的側重點不同'}；綜合最突出的是「${rc[0]}」與「${rc[1]}」，相對最弱的是「${rc[6]}」。</div>`;
+  s+=`<table class="small"><tr><th>特質</th><th>八字</th><th>星座</th><th>綜合</th></tr>${rc.map(k=>`<tr><td>${k}</td>${[B,W,C].map(v=>`<td>${(v[k]*100).toFixed(0)}%</td>`).join('')}</tr>`).join('')}</table>`;
+  s+=`<h3>性格</h3>${rc.slice(0,3).map(k=>`<p><b>${k}</b>：${TRAIT_DESC[k]}</p>`).join('')}`;
+  s+=`<p class="small">・八字看你：${BAZI.DM[BZ.dm]}</p><p class="small">・星座看你：${s0[g('太陽').sign].core}</p>`;
+  s+=`<h3>事業</h3><p class="small">・八字${BZ.geju}：${BAZI.GEJU_DESC[BZ.geju]||''}喜用${BZ.xi.join('、')}，有利行業：${BZ.xi.map(w=>BAZI.WX_ITEM[w]).join('；')}。</p>`;
+  s+=`<h3>感情</h3><p class="small">・星座金星在${s0[g('金星').sign].n}：${s0[g('金星').sign].love}</p>`;
+  if(BZ.cur)s+=`<h3>目前時運</h3><p class="small">・八字走${BZ.cur.p}大運（${BZ.cur.ss}），${BZ.xi.includes(BAZI.GW[BAZI.G.indexOf(BZ.cur.p[0])])?'屬喜用，較順':BZ.ji.includes(BAZI.GW[BAZI.G.indexOf(BZ.cur.p[0])])?'屬忌神，阻力較多':'影響中性'}。</p>`;
+  s+=`<p class="small mute">知道出生時辰後，取消「時辰不詳」重新排盤，就會加入紫微與易經，變成四套整合。</p>`;
+  el.innerHTML=s;
+}
+// ---------- 易經（只能確定上卦） ----------
+function renderYjmNH(){
+  const el=$('yjm');if(!NOHOUR){return}
+  const r=YJ.timeCast(NOHOUR.solarDate,6), up=YJ.TRI[r.code.slice(3)];
+  el.innerHTML=`<h2>易經本命卦（時辰不詳）</h2><div class="hit" style="border-color:var(--quan)"><p class="small">梅花易數本命卦用「年＋月＋日」定上卦，再「加上時辰」定下卦與動爻。沒有時辰，只能確定上卦。</p></div>
+  <p><b>上卦：${up.s} ${up.n}（${up.x}・${up.w}）</b></p><p>${TRI_DESC[up.n]}。上卦代表外在、別人眼中的你與所處的環境。</p>
+  <p class="small mute">下卦（你的內在）與動爻要有時辰才能確定；占卜分頁的易經卜卦不受影響，可以照常使用。</p>`;
+}
+return {setup,westNoHour,solarHouse,moonText};
+})();
+NH.setup();
 </script>
 <script>try{ZHAN.init()}catch(e){console.error(e)}try{HEPAN.init()}catch(e){console.error(e)}</script>
 <script>
