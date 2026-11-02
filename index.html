@@ -2602,7 +2602,7 @@ return {init,person,analyze,me};
   }
   gc(location.pathname||'/','紫微・八字・星座・占卜',false);
   function onClick(id,name){var el=document.getElementById(id);if(el)el.addEventListener('click',function(){gc('use-'+name,name,true)})}
-  onClick('go','排盤');onClick('askGo','問命盤');onClick('tgo','塔羅');onClick('cGo','流日日曆');onClick('yjGo','易經卜卦');onClick('lnGo','流年詳批');onClick('lrGo','大六壬');onClick('qmGo','奇門遁甲');onClick('tyGo','太乙神數');
+  onClick('go','排盤');onClick('askGo','問命盤');onClick('tgo','塔羅');onClick('cGo','流日日曆');onClick('yjGo','易經卜卦');onClick('lnGo','流年詳批');onClick('lrGo','大六壬');onClick('qmGo','奇門遁甲');onClick('tyGo','太乙神數');onClick('hpGo','合盤');
   window.__fbOK=1;
   document.addEventListener('zw-feedback',function(e){try{(e.detail||[]).slice(0,10).forEach(function(x){var k=String(x.k).replace(/[^a-z]/g,'').slice(0,6),v=Math.max(1,Math.min(5,parseInt(x.v,10)||0));gc('fb-'+k+'-'+v,'回饋 '+k+' '+v+'分',true)})}catch(err){}});
   document.querySelectorAll('.tabs button').forEach(function(b){b.addEventListener('click',function(){var t=b.dataset.tab||b.dataset.main;if(t&&!seen[t]){seen[t]=1;gc('tab-'+t,'分頁 '+b.textContent,true)}})});
