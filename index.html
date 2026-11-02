@@ -1299,6 +1299,7 @@ $('yjGo').onclick=()=>safe(()=>{
   else if(m==='manual'){const v=[...document.querySelectorAll('.yjV')].map(x=>+x.value);r=YJ.fromValues(v);r.vals=v}
   else if(m==='time'){r=YJ.timeCast($('yjD').value||today(),+$('yjT').value);opts={hu:true,dong:r.dong}}
   else{const a=+$('yjA').value,b=+$('yjB').value;if(!a||!b){toast('請輸入兩個正整數');return}r=YJ.meihua(a,b,a+b);r.basis=`${a} → 上卦；${b} → 下卦；${a}＋${b}＝${a+b}，÷6 餘數定動爻`;opts={hu:true,dong:r.dong}}
+  window.__lastCast=r;
   const q=$('yjQ').value.trim();
   $('yjOut').innerHTML=(q?`<p><b>問：</b>${q.replace(/[<>&]/g,'')}</p>`:'')+readingHTML(r,opts);
 },'yjOut');
@@ -1474,7 +1475,7 @@ function renderTarotUI(){
   $('yjGo').onclick=()=>{const m=$('yjM').value;if(!m.startsWith('ly_'))return prevGo();
     safe(()=>{
       const vals=m==='ly_coin'?YJ.coinCast():[...document.querySelectorAll('.yjV')].map(x=>+x.value);
-      const r=YJ.fromValues(vals);
+      const r=YJ.fromValues(vals);window.__lastCast=r;
       const [dy,dmn,dd]=($('lyD').value||today()).split('-').map(Number), [th,tm]=($('lyT').value||'12:00').split(':').map(Number);
       const bz=BAZI.compute({y:dy,m:dmn,d:dd,hh:th,mm:tm,tz:8,dst:false,gender:'男'});
       const L=LIUYAO.cast(r.code,r.moving,{dayGZ:bz.P[2],monthBr:bz.P[1][1],q:$('lyQ').value});
@@ -1630,16 +1631,16 @@ function renderInt(){
 
 // ===== 分頁重組 =====
 (function(){
-  const NAV=[['int','整合',null],['zw','紫微',['chart','ask','ln','geju','natal','daily','cal']],['bazi','八字',null],['west','星座',null],['yjm','易經',null],['trade','每日盤勢',null],['zhan','占卜',['yj','tarot']],['fb','回饋',null]];
-  const SUBN={chart:'命盤',ask:'問命盤',ln:'流年詳批',geju:'格局',natal:'本命解說',daily:'流日',cal:'流日日曆',yj:'易經・六爻',tarot:'塔羅'};
+  const NAV=[['int','整合',null],['zw','紫微',['chart','ask','ln','geju','natal','daily','cal']],['bazi','八字',null],['west','星座',null],['yjm','易經',null],['trade','每日盤勢',null],['zhan','占卜',['yj','tarot','lr','qm','ty']],['fb','回饋',null]];
+  const SUBN={chart:'命盤',ask:'問命盤',ln:'流年詳批',geju:'格局',natal:'本命解說',daily:'流日',cal:'流日日曆',yj:'易經・六爻',tarot:'塔羅',lr:'大六壬',qm:'奇門遁甲',ty:'太乙神數'};
   const tabs=document.querySelector('.tabs');
   tabs.innerHTML=NAV.map(([k,n,sub])=>`<button data-main="${k}"${sub?'':` data-tab="${k}"`}>${n}</button>`).join('');
   const subBar=document.createElement('div');subBar.className='tabs';subBar.style.top='46px';subBar.style.paddingTop='0';
   subBar.innerHTML=NAV.filter(x=>x[2]).flatMap(([k,n,sub])=>sub.map(s=>`<button data-tab="${s}" data-parent="${k}">${SUBN[s]}</button>`)).join('');
   tabs.after(subBar);
   const main=document.querySelector('main');
-  [['ask',''],['ln',''],['int','<div class="card" id="int"></div>'],['bazi','<div class="card" id="bazi"></div>'],['west','<div class="card" id="west"></div>'],['yjm','<div class="card" id="yjm"></div>'],['fb','<div class="card" id="fb"></div>'],['tarot','<div class="card"><h2>塔羅占卜</h2><div id="tarotUI"></div></div>']].forEach(([id,html])=>{const sec=document.createElement('section');sec.id='tab-'+id;sec.className='hide';sec.innerHTML=html;main.insertBefore(sec,document.querySelector('footer'))});
-  const ALL=['int','chart','ask','ln','geju','natal','daily','cal','bazi','west','yjm','trade','yj','tarot','fb'];
+  [['ask',''],['ln',''],['int','<div class="card" id="int"></div>'],['bazi','<div class="card" id="bazi"></div>'],['west','<div class="card" id="west"></div>'],['yjm','<div class="card" id="yjm"></div>'],['fb','<div class="card" id="fb"></div>'],['lr',''],['qm',''],['ty',''],['tarot','<div class="card"><h2>塔羅占卜</h2><div id="tarotUI"></div></div>']].forEach(([id,html])=>{const sec=document.createElement('section');sec.id='tab-'+id;sec.className='hide';sec.innerHTML=html;main.insertBefore(sec,document.querySelector('footer'))});
+  const ALL=['int','chart','ask','ln','geju','natal','daily','cal','bazi','west','yjm','trade','yj','tarot','lr','qm','ty','fb'];
   let cur={zw:'chart',zhan:'yj'};
   function show(sec){
     const parent=NAV.find(x=>x[0]===sec||(x[2]&&x[2].includes(sec)));const pk=parent[0];if(parent[2])cur[pk]=sec;
@@ -1785,7 +1786,7 @@ function summary(){
   try{const g=GEJU.analyze(A);s+=`格局：${g.list.map(x=>x.kind+':'+x.name).join('、')||'無'}\n`}catch(e){}
   return s;
 }
-return {answer,summary,parse};
+return {answer,summary,parse,TOPICS,pal,natalScore,periodScore,horo};
 })();
 (function(){
   const EX=['我今年財運如何？','明年適合換工作嗎？','哪一年感情最好？','下個月投資要注意什麼？','11/5 交易運勢','我適合什麼工作？','這十年事業運','今天心情和壓力'];
@@ -1985,6 +1986,402 @@ return {yearReport,lifeReport};
   $('lnGo').onclick=()=>{$('lnOut').innerHTML='<span class="mute">計算中…</span>';setTimeout(()=>run($('lnMode').value,$('lnY').value),20)};
 })();
 </script>
+<script>// ===== 占卜結合命盤：塔羅牌面、易經結合、大六壬、奇門遁甲、太乙神數 =====
+const ZHAN=(function(){
+const G='甲乙丙丁戊己庚辛壬癸', Z='子丑寅卯辰巳午未申酉戌亥';
+const GW={甲:'木',乙:'木',丙:'火',丁:'火',戊:'土',己:'土',庚:'金',辛:'金',壬:'水',癸:'水'};
+const ZW={子:'水',丑:'土',寅:'木',卯:'木',辰:'土',巳:'火',午:'火',未:'土',申:'金',酉:'金',戌:'土',亥:'水'};
+const SHENG={木:'火',火:'土',土:'金',金:'水',水:'木'}, KE={木:'土',土:'水',水:'火',火:'金',金:'木'};
+const rel=(a,b)=>a===b?'比和':SHENG[a]===b?'我生':SHENG[b]===a?'生我':KE[a]===b?'我剋':'剋我';
+const esc=s=>String(s).replace(/[<>&"']/g,'');
+const pad2=n=>String(n).padStart(2,'0');
+const gzIdx=gz=>{const g=G.indexOf(gz[0]),z=Z.indexOf(gz[1]);for(let i=0;i<60;i++)if(i%10===g&&i%12===z)return i;return 0};
+const XUNKONG=gz=>{const i=gzIdx(gz),s=i-i%10;return [Z[(s+10)%12],Z[(s+11)%12]]};
+const GRADE=sc=>sc>=2?['大吉','var(--lu)']:sc>=0.8?['吉','var(--lu)']:sc>-0.8?['平','var(--ke)']:sc>-2?['小凶','var(--quan)']:['凶','var(--ji)'];
+const badge=sc=>{const [g,c]=GRADE(sc);return `<span class="badge" style="background:${c}">${g}</span>`};
+
+// ---------- 時間 ----------
+function timeInfo(dateStr,timeStr){
+  const [y,m,d]=dateStr.split('-').map(Number),[hh,mm]=(timeStr||'12:00').split(':').map(Number);
+  const bz=BAZI.compute({y,m,d,hh,mm,tz:8,dst:false,gender:'男'});
+  const jd=ASTRO.jdUT(y,m,d,hh+mm/60-8), sun=ASTRO.sunLon(jd);
+  return {y,m,d,hh,mm,P:bz.P,jd,sun,label:`${dateStr} ${pad2(hh)}:${pad2(mm)}`,dateStr};
+}
+const JQ=['冬至','小寒','大寒','立春','雨水','驚蟄','春分','清明','穀雨','立夏','小滿','芒種','夏至','小暑','大暑','立秋','處暑','白露','秋分','寒露','霜降','立冬','小雪','大雪'];
+const jqIdx=sun=>Math.floor((((sun-270)%360)+360)%360/15);
+
+// ---------- 主題 ----------
+const TOPIC_NAMES=['財運','事業','感情','健康','考試學業','家宅置產','外出','人際','子女','長輩文書','心情精神','手足','整體'];
+function topicOf(q,sel){
+  if(sel&&sel!=='auto')return ASK.TOPICS.find(t=>t.n===sel)||ASK.TOPICS[ASK.TOPICS.length-1];
+  try{const r=ASK.parse(q||'');if(r&&r.topic)return r.topic}catch(e){}
+  return ASK.TOPICS.find(t=>t.n==='整體');
+}
+const HOUSE_OF={財運:2,事業:10,感情:7,健康:6,考試學業:9,家宅置產:4,外出:9,人際:11,子女:5,長輩文書:10,心情精神:12,手足:3,整體:1};
+const TOPIC_FORM=(id)=>`<div class="row"><input id="${id}Q" placeholder="想問的事（只在本頁，不會保存）" style="flex:1;min-width:200px"></div>
+  <div class="row small" style="margin-top:6px"><label>類別</label><select id="${id}Tp"><option value="auto">依問題自動判斷</option>${TOPIC_NAMES.map(n=>`<option>${n}</option>`).join('')}</select>
+  <label>起課時間</label><input id="${id}D" type="date"><input id="${id}T" type="time"></div>`;
+function initTime(id){const n=new Date();$(id+'D').value=`${n.getFullYear()}-${pad2(n.getMonth()+1)}-${pad2(n.getDate())}`;$(id+'T').value=`${pad2(n.getHours())}:${pad2(n.getMinutes())}`}
+
+// ---------- 命盤結合 ----------
+// opts: {topic, date, wx:[[五行,權重,說明]], signs:[[星座idx,說明]], el:西洋元素}
+function chartLink(o){
+  if(!A||!BZ||!WS)return {html:`<div class="hit" style="border-color:var(--line)"><b>結合命盤</b><p class="small mute">先在上方輸入生辰並按「排盤」，這裡就會把結果和你的紫微流年、八字喜忌、星座行運合在一起看。</p></div>`,score:0,has:false};
+  const t=o.topic, parts=[];let total=0;
+  // 紫微
+  let zs=0;const zl=[];
+  try{
+    const h=ASK.horo(o.date);
+    t.p.forEach((pn,k)=>{const p=ASK.pal(pn);if(!p)return;const w=k?0.5:1;
+      const n=ASK.natalScore(p);zs+=n.sc*0.4*w;
+      const y=ASK.periodScore(p,h.yearly.mutagen,1,'流年');const mo=ASK.periodScore(p,h.monthly.mutagen,0.5,'流月');
+      zs+=(y.sc+mo.sc)*w;
+      if(!k)zl.push(`${pn}宮主星：${p.majorStars.map(s=>s.name+(s.brightness||'')).join('、')||'無主星（借對宮）'}`);
+      [...y.lines,...mo.lines].slice(0,3).forEach(l=>zl.push(l.txt));
+    });
+    if(zl.length<2)zl.push('流年、流月四化沒有直接落入相關宮位，紫微這邊屬於平常的狀態。');
+  }catch(e){zl.push('（紫微流年計算失敗）')}
+  zs=Math.max(-3,Math.min(3,zs));total+=zs;
+  parts.push(`<p class="small"><b>紫微（${t.p[0]}宮・${o.date.slice(0,4)} 流年）</b> ${badge(zs)}<br>${zl.map(esc).join('<br>')}</p>`);
+  // 八字
+  let bs=0;const bl=[];
+  (o.wx||[]).forEach(([w,wt,lab])=>{if(!w)return;if(BZ.xi.includes(w)){bs+=wt;bl.push(`${lab}屬${w}，是你的喜用神，有幫助`)}else if(BZ.ji.includes(w)){bs-=wt;bl.push(`${lab}屬${w}，是你的忌神，要多留意`)}else bl.push(`${lab}屬${w}，對你影響中性`)});
+  const dmRel=o.wx&&o.wx[0]&&o.wx[0][0]?rel(BZ.dmw,o.wx[0][0]):null;
+  if(dmRel)bl.push(`和你的日主${BZ.dm}${BZ.dmw}的關係是「${{比和:'同類相助',我生:'你付出、輸出',生我:'來生扶你',我剋:'你可以掌握（財）',剋我:'壓力、約束（官殺）'}[dmRel]}」`);
+  bs=Math.max(-2,Math.min(2,bs));total+=bs*0.7;
+  parts.push(`<p class="small"><b>八字（日主${BZ.dm}${BZ.dmw}，${BZ.strong?'身強':'身弱'}，喜${BZ.xi.join('')}、忌${BZ.ji.join('')}）</b> ${badge(bs)}<br>${bl.join('；')}。</p>`);
+  // 星座
+  let ws=0;const wl=[];
+  const H=HOUSE_OF[t.n]||1, hs=(WS.ascS+H-1)%12;
+  try{
+    const [yy,mm,dd]=o.date.split('-').map(Number);const tp=ASTRO.planets(ASTRO.jdUT(yy,mm,dd,4));
+    const sg=l=>Math.floor(l/30);
+    const inH=n=>tp[n]&&sg(tp[n].lon)===hs;
+    if(inH('木星')){ws+=1;wl.push(`行運木星正走你的第${H}宮（${WEST.SIGNS[hs].n}），這方面有擴展、好運`)}
+    if(inH('土星')){ws-=0.7;wl.push(`行運土星在第${H}宮，這方面要扛責任、步調慢`)}
+    if(inH('金星')){ws+=0.5;wl.push(`行運金星經過第${H}宮，人緣與財氣加分`)}
+    if(inH('火星')){ws-=0.3;wl.push(`行運火星經過第${H}宮，衝勁強但容易衝突`)}
+    if(tp['太陽']&&sg(tp['太陽'].lon)===hs){ws+=0.3;wl.push(`太陽正走第${H}宮，這是當前的焦點`)}
+    const nat=WS.P.filter(p=>p.house===H&&['太陽','月亮','水星','金星','火星','木星','土星'].includes(p.n)).map(p=>p.n);
+    wl.unshift(`問「${t.n}」看第${H}宮（${WEST.SIGNS[hs].n}）${nat.length?`，本命有${nat.join('、')}坐守`:''}`);
+  }catch(e){wl.push('（行運計算失敗）')}
+  (o.signs||[]).forEach(([si,lab])=>{const hit=[['太陽',WS.P.find(p=>p.n==='太陽').sign],['月亮',WS.P.find(p=>p.n==='月亮').sign],['上升',WS.ascS]].filter(x=>x[1]===si).map(x=>x[0]);
+    if(hit.length){ws+=0.7;wl.push(`${lab}對應${WEST.SIGNS[si].n}，正好是你的${hit.join('、')}星座，這張牌和你本人特別有關`)}});
+  if(o.el){const cnt=WS.P.filter(p=>['太陽','月亮','水星','金星','火星'].includes(p.n)&&WEST.SIGNS[p.sign].el===o.el).length;
+    wl.push(cnt>=2?`牌面以${o.el}元素為主，你的本命也偏${o.el}（${cnt} 顆個人行星），容易產生共鳴`:cnt===0?`牌面以${o.el}元素為主，但你的本命缺${o.el}，這是要學習的課題`:`牌面以${o.el}元素為主`)}
+  ws=Math.max(-2,Math.min(2,ws));total+=ws*0.5;
+  parts.push(`<p class="small"><b>星座（行運）</b> ${badge(ws)}<br>${wl.join('；')}。</p>`);
+  return {html:`<h3>結合你的命盤</h3>${parts.join('')}`,score:total,has:true,zs,bs,ws};
+}
+function verdictHTML(divSc,link,name){
+  const tot=divSc*1.5+(link.has?link.score:0);const [g]=GRADE(tot/(link.has?2:1.5));
+  const adv={大吉:'天時（占卜）與本命流年都站在你這邊，可以積極進行，但仍要照計畫控管風險。',吉:'整體偏順，可以正常推進、適度爭取。',平:'好壞參半，照原計畫走，不必勉強，也不用過度擔心。',小凶:'阻力較多，宜保守、多做準備，重大決定可以延後。',凶:'時機不利，宜守不宜攻，避免冒險和重大承諾。'}[g];
+  return `<h3>綜合判斷</h3><p>${badge(tot/(link.has?2:1.5))} ${adv}</p><p class="small mute">權重：${name} 1.5、紫微 1、八字 0.7、星座 0.5。${link.has?'':'尚未排盤，只依占卜結果判斷。'}占卜是整理思緒的參考，重要決定請以實際資訊與專業意見為準。</p>`;
+}
+
+// ---------- 塔羅牌面（本工具原創的簡化圖案） ----------
+const MAJ_ASTRO=[['天王星','風',10],['水星','風',2],['月亮','水',3],['金星','土',1],['牡羊座','火',0],['金牛座','土',1],['雙子座','風',2],['巨蟹座','水',3],['獅子座','火',4],['處女座','土',5],['木星','火',8],['天秤座','風',6],['海王星','水',11],['天蠍座','水',7],['射手座','火',8],['摩羯座','土',9],['火星','火',0],['水瓶座','風',10],['雙魚座','水',11],['太陽','火',4],['冥王星','火',7],['土星','土',9]];
+const SUITC={權杖:'#c0502b',聖杯:'#2f6db3',寶劍:'#6b6f7a',錢幣:'#b8892a'};
+function suitIcon(s,x,y,k){k=k||1;const c=SUITC[s];
+  if(s==='權杖')return `<g transform="translate(${x},${y}) scale(${k})"><rect x="-2" y="-11" width="4" height="22" rx="2" fill="${c}"/><circle cx="0" cy="-11" r="3" fill="${c}"/><path d="M-2 -4 l-4 -3 M2 2 l4 -3" stroke="${c}" stroke-width="1.5"/></g>`;
+  if(s==='聖杯')return `<g transform="translate(${x},${y}) scale(${k})"><path d="M-8 -10 h16 q0 11 -8 13 q-8 -2 -8 -13z" fill="${c}"/><rect x="-1.5" y="3" width="3" height="6" fill="${c}"/><rect x="-6" y="9" width="12" height="2.5" rx="1" fill="${c}"/></g>`;
+  if(s==='寶劍')return `<g transform="translate(${x},${y}) scale(${k})"><path d="M0 -13 l2.5 4 v12 h-5 v-12z" fill="${c}"/><rect x="-7" y="3" width="14" height="2.5" rx="1" fill="${c}"/><rect x="-1.5" y="5.5" width="3" height="6" fill="${c}"/></g>`;
+  return `<g transform="translate(${x},${y}) scale(${k})"><circle r="10" fill="none" stroke="${c}" stroke-width="2"/><path d="M0 -7 L4.1 5.7 L-6.7 -2.2 H6.7 L-4.1 5.7Z" fill="none" stroke="${c}" stroke-width="1.4"/></g>`;
+}
+function star(cx,cy,r,n,fill){let d='';for(let i=0;i<n*2;i++){const a=Math.PI*i/n-Math.PI/2,rr=i%2?r*0.45:r;d+=(i?'L':'M')+(cx+rr*Math.cos(a)).toFixed(1)+' '+(cy+rr*Math.sin(a)).toFixed(1)}return `<path d="${d}Z" fill="${fill}"/>`}
+const MAJ_EMB=[
+ c=>`<circle cx="50" cy="62" r="20" fill="none" stroke="${c}" stroke-width="3"/><path d="M38 88 l12 -8 l12 8" stroke="${c}" stroke-width="3" fill="none"/>${star(50,62,6,5,c)}`,
+ c=>`<path d="M30 62 c0 -14 18 -14 20 0 c2 14 20 14 20 0 c0 -14 -18 -14 -20 0 c-2 14 -20 14 -20 0z" fill="none" stroke="${c}" stroke-width="3"/>`,
+ c=>`<rect x="30" y="40" width="8" height="46" fill="${c}"/><rect x="62" y="40" width="8" height="46" fill="none" stroke="${c}" stroke-width="2"/><path d="M50 50 a10 10 0 1 0 0 20 a7 7 0 1 1 0 -20z" fill="${c}"/>`,
+ c=>`${star(50,60,22,12,c)}<circle cx="50" cy="60" r="10" fill="#fff"/><path d="M50 52 v16 M44 64 h12" stroke="${c}" stroke-width="2.5"/>`,
+ c=>`<path d="M30 72 h40 l-4 -24 l-8 10 l-8 -14 l-8 14 l-8 -10z" fill="${c}"/><rect x="30" y="76" width="40" height="5" fill="${c}"/>`,
+ c=>`<path d="M50 38 v50 M38 50 h24 M41 62 h18 M44 74 h12" stroke="${c}" stroke-width="4"/>`,
+ c=>`<path d="M50 84 c-26 -16 -24 -38 -10 -38 c6 0 10 6 10 10 c0 -4 4 -10 10 -10 c14 0 16 22 -10 38z" fill="${c}"/>`,
+ c=>`<rect x="30" y="50" width="40" height="22" rx="3" fill="none" stroke="${c}" stroke-width="3"/><circle cx="38" cy="78" r="6" fill="${c}"/><circle cx="62" cy="78" r="6" fill="${c}"/>${star(50,61,6,8,c)}`,
+ c=>`<path d="M28 60 c8 -18 36 -18 44 0 c-8 18 -36 18 -44 0z" fill="none" stroke="${c}" stroke-width="3"/><path d="M40 40 c4 -6 16 -6 20 0" stroke="${c}" stroke-width="3" fill="none"/><path d="M35 60 h30" stroke="${c}" stroke-width="2"/>`,
+ c=>`<path d="M50 36 l14 22 h-28z" fill="${c}"/><rect x="47" y="58" width="6" height="30" fill="${c}"/>${star(50,48,5,6,'#fff')}`,
+ c=>`<circle cx="50" cy="62" r="22" fill="none" stroke="${c}" stroke-width="3"/><circle cx="50" cy="62" r="6" fill="${c}"/>${[0,45,90,135].map(a=>`<path d="M50 62 l${(22*Math.cos(a*Math.PI/180)).toFixed(1)} ${(22*Math.sin(a*Math.PI/180)).toFixed(1)} M50 62 l${(-22*Math.cos(a*Math.PI/180)).toFixed(1)} ${(-22*Math.sin(a*Math.PI/180)).toFixed(1)}" stroke="${c}" stroke-width="2"/>`).join('')}`,
+ c=>`<path d="M50 38 v48 M30 48 h40" stroke="${c}" stroke-width="3"/><path d="M24 70 l6 -22 l6 22z M64 70 l6 -22 l6 22z" fill="${c}"/><rect x="40" y="84" width="20" height="4" fill="${c}"/>`,
+ c=>`<path d="M30 40 h40 M50 40 v18" stroke="${c}" stroke-width="3"/><circle cx="50" cy="66" r="8" fill="${c}"/><path d="M50 74 v14 M42 80 h16" stroke="${c}" stroke-width="3"/>`,
+ c=>`<path d="M36 86 c0 -30 6 -46 30 -50 c-14 10 -18 24 -18 50z" fill="${c}"/><path d="M58 52 v34" stroke="${c}" stroke-width="3"/>`,
+ c=>`<path d="M34 46 l12 0 l-4 30 h-4z" fill="${c}"/><path d="M66 46 l-12 0 l4 30 h4z" fill="none" stroke="${c}" stroke-width="2.5"/><path d="M44 54 q6 10 12 0" stroke="${c}" stroke-width="2.5" fill="none"/>`,
+ c=>`${star(50,62,20,5,c)}<path d="M30 38 l8 10 M70 38 l-8 10" stroke="${c}" stroke-width="3"/>`,
+ c=>`<path d="M38 88 v-44 l12 -10 l12 10 v44z" fill="none" stroke="${c}" stroke-width="3"/><path d="M60 30 l-8 16 h8 l-10 16" stroke="${c}" stroke-width="3" fill="none"/>`,
+ c=>`${star(50,56,20,8,c)}${star(32,82,5,8,c)}${star(68,82,5,8,c)}`,
+ c=>`<path d="M58 40 a22 22 0 1 0 0 40 a17 17 0 1 1 0 -40z" fill="${c}"/>`,
+ c=>`<circle cx="50" cy="62" r="13" fill="${c}"/>${Array.from({length:12},(_,i)=>{const a=i*Math.PI/6;return `<path d="M${(50+17*Math.cos(a)).toFixed(1)} ${(62+17*Math.sin(a)).toFixed(1)} L${(50+25*Math.cos(a)).toFixed(1)} ${(62+25*Math.sin(a)).toFixed(1)}" stroke="${c}" stroke-width="3"/>`}).join('')}`,
+ c=>`<path d="M34 66 c0 -18 32 -18 32 0" stroke="${c}" stroke-width="3" fill="none"/><path d="M50 30 v14 M40 34 l20 6 M40 40 l20 -6" stroke="${c}" stroke-width="3"/><rect x="38" y="66" width="24" height="18" fill="none" stroke="${c}" stroke-width="3"/>`,
+ c=>`<ellipse cx="50" cy="62" rx="20" ry="26" fill="none" stroke="${c}" stroke-width="4"/>${star(50,62,8,6,c)}`];
+function cardSVG(c){
+  const W=100,H=160;const maj=c.major;const idx=maj?+c.id.slice(1):+c.id.replace(/^\D+/,'');
+  const col=maj?'#6a3d9a':SUITC[c.suit];
+  let inner='';
+  if(maj){inner=MAJ_EMB[idx](col)+`<text x="50" y="26" font-size="14" text-anchor="middle" fill="${col}" font-weight="700">${esc(c.num)}</text>`}
+  else if(idx<10){const n=idx+1;const pos=n===1?[[50,80,2.2]]:Array.from({length:n},(_,i)=>{const cols=n<=3?1:2,rows=Math.ceil(n/cols),r=Math.floor(i/cols),cc=i%cols;return [cols===1?50:(cc?66:34),40+((r+0.5)*(84/rows)),n<=4?1.2:1]});
+    inner=pos.map(([x,y,k])=>suitIcon(c.suit,x,y,k)).join('')+`<text x="12" y="20" font-size="13" fill="${col}" font-weight="700">${n===1?'A':n}</text>`}
+  else{const rk=['侍者','騎士','皇后','國王'][idx-10];inner=suitIcon(c.suit,50,74,2)+`<text x="50" y="30" font-size="13" text-anchor="middle" fill="${col}" font-weight="700">${rk}</text>`+(idx>=12?`<path d="M36 44 l4 -8 l5 6 l5 -8 l5 8 l5 -6 l4 8z" fill="${col}"/>`:'')}
+  return `<svg viewBox="0 0 ${W} ${H}" width="100" height="160" style="display:block;margin:0 auto;${c.reversed?'transform:rotate(180deg);':''}" role="img" aria-label="${esc(c.name)}"><rect x="2" y="2" width="96" height="156" rx="9" fill="#fffdf6" stroke="${col}" stroke-width="2.5"/><rect x="7" y="7" width="86" height="146" rx="6" fill="none" stroke="${col}" stroke-width="0.8" opacity=".5"/>${inner}<text x="50" y="146" font-size="${c.en.length>15?8.5:c.en.length>12?10:11}" text-anchor="middle" fill="${col}">${esc(c.en)}</text></svg>`;
+}
+const SUIT_WX={權杖:'火',聖杯:'水',寶劍:'金',錢幣:'土'}, EL_WX={火:'火',水:'水',風:'金',土:'土'};
+function tarotReading(cards,pos,q,topic,date){
+  let s=(q?`<p><b>問：</b>${esc(q)}</p>`:'')+`<p class="small mute">類別：${topic.n}</p>`;
+  s+=`<div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center">${cards.map((c,i)=>`<div style="border:1px solid var(--line);border-radius:12px;padding:10px;width:150px;background:var(--card);text-align:center"><div class="small mute">${pos[i]}</div>${cardSVG(c)}<div style="font-weight:700;margin-top:6px">${esc(c.num&&c.major?c.num+' ':'')}${esc(c.name)}</div><div class="small">${c.reversed?'逆位':'正位'}</div><div class="small mute">${esc(c.en)}</div></div>`).join('')}</div>`;
+  s+=`<h3>逐張解讀</h3>`;
+  let sc=0;const wx=[],signs=[];const elCount={};
+  cards.forEach((c,i)=>{const meaning=c.reversed?c.rev:c.up;sc+=c.reversed?-0.4:0.4;
+    let corr='';
+    if(c.major){const [a,el,si]=MAJ_ASTRO[+c.id.slice(1)];corr=`對應${a}（${el}元素）`;elCount[el]=(elCount[el]||0)+1;signs.push([si,`${c.name}`]);wx.push([EL_WX[el],0.6,`${pos[i]}的${c.name}`])}
+    else{corr=`${c.suit}屬${c.el}元素（${TAROT.SUITS[c.suit].theme}）`;elCount[c.el]=(elCount[c.el]||0)+1;wx.push([SUIT_WX[c.suit],0.6,`${pos[i]}的${c.name}`])}
+    s+=`<p class="small"><b>${pos[i]}・${esc(c.name)}${c.reversed?'（逆位）':''}</b>：${esc(meaning)}。<span class="mute">${corr}</span></p>`});
+  const last=cards[cards.length-1];sc+=last.reversed?-0.6:0.6;
+  const maj=cards.filter(c=>c.major).length;
+  s+=`<p class="small">${maj>=2?'大阿爾克那較多，這件事牽涉較大的人生課題。':'以小阿爾克那為主，屬於可以靠行動調整的日常層面。'}${cards.filter(c=>c.reversed).length>=2?'逆位偏多，代表阻滯或時機未到。':''}</p>`;
+  const topEl=Object.entries(elCount).sort((a,b)=>b[1]-a[1])[0];
+  const link=chartLink({topic,date,wx,signs,el:topEl&&topEl[1]>=2?topEl[0]:null});
+  s+=link.html+verdictHTML(sc,link,'塔羅');
+  s+=`<p class="small mute">牌面為本工具原創的簡化圖案，不是任何商業牌卡的複製。元素對應：權杖火、聖杯水、寶劍風（換算五行為金）、錢幣土；大牌依黃金黎明體系的星象對應。</p>`;
+  return s;
+}
+
+// ---------- 易經卜卦結合命盤 ----------
+function yijingLink(r,q,topic,date){
+  const b=YJ.hex(r.code), mv=r.moving||[];const d=mv.length?mv[mv.length-1]:(r.dong!=null?r.dong:0);
+  const ty=YJ.tiyong(r.code,d);
+  const z=mv.length?YJ.hex(YJ.flip(r.code,mv)):b;
+  let sc=(YJ.STANCE_SCORE[b.mean[2]]||0)*0.5+ty.score*0.7+(YJ.STANCE_SCORE[z.mean[2]]||0)*0.3;
+  const wx=[[ty.ti.w,0.8,`體卦${ty.ti.n}`],[ty.yong.w,0.5,`用卦${ty.yong.n}`]];
+  let s=`<p class="small mute">類別：${topic.n}　本卦${b.z.n}${mv.length?`、之卦${z.z.n}`:''}，體${ty.ti.n}${ty.ti.w}、用${ty.yong.n}${ty.yong.w}。</p>`;
+  if(A){try{const G=benmingGua();const r1=rel(G.ty.ti.w,ty.ti.w);s+=`<p class="small"><b>和本命卦對照：</b>你的本命卦是${G.b.z.n}（體${G.ty.ti.n}${G.ty.ti.w}），這一卦的體卦屬${ty.ti.w}，${{比和:'與本命同氣，這件事和你的本性相合',我生:'需要你付出心力去成就',生我:'這件事對你有滋養、能補本命',我剋:'你有能力掌握',剋我:'這件事會對你形成壓力'}[r1]}。</p>`;sc+=r1==='生我'||r1==='比和'?0.3:r1==='剋我'?-0.3:0}catch(e){}}
+  const link=chartLink({topic,date,wx});
+  return `<div style="margin-top:12px;border-top:1px dashed var(--line);padding-top:8px">${s}${link.html}${verdictHTML(sc,link,'易經')}</div>`;
+}
+
+// ---------- 大六壬 ----------
+const JI_GONG={甲:'寅',乙:'辰',丙:'巳',丁:'未',戊:'巳',己:'未',庚:'申',辛:'戌',壬:'亥',癸:'丑'};
+const GUI={甲:['丑','未'],戊:['丑','未'],庚:['丑','未'],乙:['子','申'],己:['子','申'],丙:['亥','酉'],丁:['亥','酉'],壬:['卯','巳'],癸:['卯','巳'],辛:['午','寅']};
+const JIANG=['貴人','螣蛇','朱雀','六合','勾陳','青龍','天空','白虎','太常','玄武','太陰','天后'];
+const JIANG_GOOD={貴人:1,六合:1,青龍:1,太常:1,太陰:1,天后:1};
+const JIANG_DESC={貴人:'貴人相助、得上位者支持',螣蛇:'虛驚、怪異、心神不定',朱雀:'口舌、文書、消息',六合:'和合、交易、婚姻',勾陳:'拖延、爭執、牽絆',青龍:'財喜、升遷、吉慶',天空:'空虛、欺詐、落空',白虎:'凶險、傷病、急迫',太常:'衣食、宴會、穩定收益',玄武:'暗昧、盜失、不明',太陰:'暗中助力、隱私、陰柔',天后:'女性助力、恩澤、私情'};
+const YIMA={申:'寅',子:'寅',辰:'寅',寅:'申',午:'申',戌:'申',巳:'亥',酉:'亥',丑:'亥',亥:'巳',卯:'巳',未:'巳'};
+const LIUQIN=(dm,w)=>({比和:'兄弟',我生:'子孫',生我:'父母',我剋:'妻財',剋我:'官鬼'})[rel(dm,w)];
+const isYang=ch=>(G.includes(ch)?G.indexOf(ch):Z.indexOf(ch))%2===0;
+const XING={子:'卯',卯:'子',寅:'巳',巳:'申',申:'寅',丑:'戌',戌:'未',未:'丑',辰:'辰',午:'午',酉:'酉',亥:'亥'};
+function liuren(ti){
+  const dayGZ=ti.P[2], dg=dayGZ[0], dz=dayGZ[1], hz=ti.P[3][1];
+  const yj=Z[[11,10,9,8,7,6,5,4,3,2,1,0][Math.floor((((ti.sun-330)%360)+360)%360/30)]];
+  const yi=Z.indexOf(yj), hi=Z.indexOf(hz);
+  const tianAt=di=>Z[(yi+Z.indexOf(di)-hi+12)%12];
+  const diOf=tian=>Z[(Z.indexOf(tian)-yi+hi+12)%12];
+  const k1=tianAt(JI_GONG[dg]), k2=tianAt(k1), k3=tianAt(dz), k4=tianAt(k3);
+  const ke=[{n:'一課',lo:dg,up:k1},{n:'二課',lo:k1,up:k2},{n:'三課',lo:dz,up:k3},{n:'四課',lo:k3,up:k4}];
+  const W=ch=>GW[ch]||ZW[ch];
+  ke.forEach(k=>{k.zei=KE[W(k.lo)]===W(k.up)?false:KE[W(k.up)]===W(k.lo);k.xiaZei=KE[W(k.lo)]===W(k.up);k.shangKe=KE[W(k.up)]===W(k.lo)});
+  const yangDay=isYang(dg);let method='',chu=null,zhong=null,mo=null;
+  const uniq=arr=>[...new Set(arr)];
+  const pick=(cands,label)=>{const ups=uniq(cands.map(k=>k.up));if(ups.length===1){method=label;return ups[0]}
+    const same=ups.filter(u=>isYang(u)===yangDay);if(same.length===1){method=label+'・比用';return same[0]}
+    const pool=same.length?same:ups;const meng=pool.filter(u=>'寅申巳亥'.includes(u)),zhongZ=pool.filter(u=>'子午卯酉'.includes(u));
+    method=label+'・涉害';return (meng[0]||zhongZ[0]||(yangDay?ke[0].up:ke[2].up))};
+  const fu=yj===hz, fan=(yi-hi+12)%12===6;
+  const zei=ke.filter(k=>k.xiaZei), kk=ke.filter(k=>k.shangKe);
+  const bazhuan=JI_GONG[dg]===dz;
+  if(fu){method='伏吟';chu=yangDay?k1:k3;if(zei.length)chu=pick(zei,'伏吟');zhong=XING[chu]===chu?(yangDay?k3:k1):XING[chu];mo=XING[zhong]===zhong?Z[(Z.indexOf(zhong)+6)%12]:XING[zhong]}
+  else if(fan&&!zei.length&&!kk.length){method='返吟・驛馬';chu=YIMA[dz];zhong=k3;mo=k1}
+  else if(zei.length)chu=pick(zei,'賊剋（重審）');
+  else if(kk.length)chu=pick(kk,'賊剋（元首）');
+  else{
+    const yao1=ke.slice(1).filter(k=>KE[W(k.up)]===W(dg)), yao2=ke.slice(1).filter(k=>KE[W(dg)]===W(k.up));
+    if(yao1.length)chu=pick(yao1,'遙剋（蒿矢）');else if(yao2.length)chu=pick(yao2,'遙剋（彈射）');
+    else if(bazhuan){method='八專';chu=yangDay?Z[(Z.indexOf(k1)+2)%12]:Z[(Z.indexOf(k4)-2+12)%12];zhong=k1;mo=k1}
+    else if(uniq(ke.map(k=>k.lo+k.up)).length<4){method='別責';const he={甲:'己',己:'甲',乙:'庚',庚:'乙',丙:'辛',辛:'丙',丁:'壬',壬:'丁',戊:'癸',癸:'戊'}[dg];
+      chu=yangDay?tianAt(JI_GONG[he]):Z[(Z.indexOf(dz)+4)%12];zhong=k1;mo=k1}
+    else{method='昂星';if(yangDay){chu=tianAt('酉');zhong=k3;mo=k1}else{chu=diOf('酉');zhong=k1;mo=k3}}
+  }
+  if(!zhong){zhong=tianAt(chu);mo=tianAt(zhong)}
+  // 天將
+  const day=hi>=3&&hi<=8, gz=GUI[dg][day?0:1];
+  const gDi=diOf(gz), shun='亥子丑寅卯辰'.includes(gDi);
+  const jiangOf={};Z.split('').forEach((_,k)=>{const br=Z[(Z.indexOf(gz)+(shun?k:-k)+12)%12];jiangOf[br]=JIANG[k]});
+  const kong=XUNKONG(dayGZ);
+  const sz=[chu,zhong,mo].map((br,i)=>({br,n:['初傳','中傳','末傳'][i],w:ZW[br],lq:LIUQIN(GW[dg],ZW[br]),jiang:jiangOf[br],kong:kong.includes(br)}));
+  return {dayGZ,hz,yj,ke,sz,method,jiangOf,kong,tianAt,day,gz,shun,dg,dz};
+}
+const LR_WANT={財運:['妻財'],事業:['官鬼','父母'],感情:['妻財','官鬼'],健康:['子孫'],考試學業:['父母','官鬼'],家宅置產:['父母','妻財'],外出:['子孫'],人際:['兄弟'],子女:['子孫'],長輩文書:['父母'],心情精神:['子孫'],手足:['兄弟'],整體:['妻財','官鬼']};
+function liurenHTML(ti,q,topic){
+  const L=liuren(ti);
+  let s=(q?`<p><b>問：</b>${esc(q)}</p>`:'')+`<p class="small mute">起課：${ti.label}，${ti.P[1]}月 ${L.dayGZ}日 ${ti.P[3]}時；月將${L.yj}（${['登明','河魁','從魁','傳送','小吉','勝光','太乙','天罡','太衝','功曹','大吉','神后'][[11,10,9,8,7,6,5,4,3,2,1,0].indexOf(Z.indexOf(L.yj))]}）加${L.hz}時；${L.day?'晝':'夜'}貴人在${L.gz}，${L.shun?'順':'逆'}布天將；旬空${L.kong.join('')}。類別：${topic.n}</p>`;
+  s+=`<h3>天地盤</h3><div style="overflow-x:auto"><table class="small" style="text-align:center"><tr><th>地盤</th>${Z.split('').map(z=>`<td>${z}</td>`).join('')}</tr><tr><th>天盤</th>${Z.split('').map(z=>`<td><b>${L.tianAt(z)}</b></td>`).join('')}</tr><tr><th>天將</th>${Z.split('').map(z=>`<td>${L.jiangOf[L.tianAt(z)].slice(0,2)}</td>`).join('')}</tr></table></div>`;
+  s+=`<h3>四課</h3><div style="display:flex;gap:6px;justify-content:center;text-align:center">${[...L.ke].reverse().map(k=>`<div style="border:1px solid var(--line);border-radius:8px;padding:6px 10px"><div class="small mute">${L.jiangOf[k.up]}</div><div><b>${k.up}</b></div><div>${k.lo}</div><div class="small mute">${k.n}${k.xiaZei?'・下賊上':k.shangKe?'・上剋下':''}</div></div>`).join('')}</div>`;
+  s+=`<h3>三傳（${L.method}）</h3><table class="small"><tr><th></th><th>地支</th><th>六親</th><th>天將</th><th>含意</th></tr>${L.sz.map(x=>`<tr><td>${x.n}</td><td><b>${x.br}</b>${x.w}${x.kong?'（空）':''}</td><td>${x.lq}</td><td>${x.jiang}</td><td>${JIANG_DESC[x.jiang]}</td></tr>`).join('')}</table>`;
+  const want=LR_WANT[topic.n]||['妻財'];let sc=0;const notes=[];
+  L.sz.forEach((x,i)=>{const w=[0.6,0.8,1.2][i];sc+=(JIANG_GOOD[x.jiang]?0.5:-0.4)*w;if(x.kong){sc-=0.3*w;notes.push(`${x.n}${x.br}落空亡，${i===2?'結果容易落空或延遲':'這個階段的力量虛浮'}`)}});
+  const hit=L.sz.filter(x=>want.includes(x.lq));
+  if(hit.length){sc+=0.8;notes.push(`所問「${topic.n}」看${want.join('或')}，在三傳的${hit.map(x=>x.n).join('、')}出現，事情有著落`)}else{sc-=0.4;notes.push(`所問「${topic.n}」看${want.join('或')}，三傳中沒有出現，事情較難直接成形`)}
+  if(L.sz.some(x=>x.lq==='官鬼')&&['健康','心情精神'].includes(topic.n)){sc-=0.6;notes.push('三傳見官鬼，健康或壓力方面要留意')}
+  const r=rel(ZW[L.sz[0].br],ZW[L.sz[2].br]);notes.push(`初傳${L.sz[0].br}→末傳${L.sz[2].br}：${{比和:'始終一致，事情按原方向發展',我生:'先付出後有成果',生我:'結果回頭幫助開端，有始有終',我剋:'開端能掌控結果',剋我:'結果反過來壓制開端，後勁不足'}[r]}`);
+  s+=`<h3>課象判斷</h3>${notes.map(n=>`<p class="small">・${n}。</p>`).join('')}<p class="small">・發端看初傳「${L.sz[0].jiang}」：${JIANG_DESC[L.sz[0].jiang]}；過程看中傳「${L.sz[1].jiang}」；結果看末傳「${L.sz[2].jiang}」：${JIANG_DESC[L.sz[2].jiang]}。</p>`;
+  const link=chartLink({topic,date:ti.dateStr,wx:[[ZW[L.sz[2].br],0.8,`末傳${L.sz[2].br}`],[ZW[L.sz[0].br],0.4,`初傳${L.sz[0].br}`]]});
+  s+=link.html+verdictHTML(Math.max(-3,Math.min(3,sc)),link,'大六壬');
+  s+=`<p class="small mute">起課依月將加時、日干寄宮立四課；三傳取法涵蓋賊剋、比用、涉害（以孟仲季簡化）、遙剋、昂星、別責、八專、伏吟、返吟，細部各派略有不同。天將依「甲戊庚牛羊」歌訣，卯至申時用晝貴。</p>`;
+  return s;
+}
+
+// ---------- 奇門遁甲（時家轉盤・拆補法） ----------
+const QM_JU=[[1,7,4],[2,8,5],[3,9,6],[8,5,2],[9,6,3],[1,7,4],[3,9,6],[4,1,7],[5,2,8],[4,1,7],[5,2,8],[6,3,9],[9,3,6],[8,2,5],[7,1,4],[2,5,8],[1,4,7],[9,3,6],[7,1,4],[6,9,3],[5,8,2],[6,9,3],[5,8,2],[4,7,1]];
+const RING=[1,8,3,4,9,2,7,6];
+const STAR_AT={1:'天蓬',2:'天芮',3:'天沖',4:'天輔',5:'天禽',6:'天心',7:'天柱',8:'天任',9:'天英'};
+const DOOR_AT={1:'休門',2:'死門',3:'傷門',4:'杜門',6:'開門',7:'驚門',8:'生門',9:'景門'};
+const GONG_W={1:'水',2:'土',3:'木',4:'木',5:'土',6:'金',7:'金',8:'土',9:'火'}, GONG_N={1:'坎',2:'坤',3:'震',4:'巽',5:'中',6:'乾',7:'兌',8:'艮',9:'離'};
+const DOOR_W={休門:'水',生門:'土',傷門:'木',杜門:'木',景門:'火',死門:'土',驚門:'金',開門:'金'};
+const DOOR_SC={開門:1,休門:1,生門:1,景門:0.2,杜門:-0.4,傷門:-0.6,驚門:-0.6,死門:-1};
+const STAR_SC={天輔:1,天禽:1,天心:1,天沖:0.5,天任:0.5,天柱:-0.5,天英:-0.3,天蓬:-1,天芮:-1};
+const GOD_SC={值符:1,太陰:0.6,六合:0.6,九地:0.3,九天:0.5,螣蛇:-0.6,白虎:-1,玄武:-0.8};
+const GODS=['值符','螣蛇','太陰','六合','白虎','玄武','九地','九天'];
+const YI='戊己庚辛壬癸丁丙乙';
+const ZHI_GONG={子:1,丑:8,寅:8,卯:3,辰:4,巳:4,午:9,未:2,申:2,酉:7,戌:6,亥:6};
+function qimen(ti){
+  const k=jqIdx(ti.sun), yang=k<12;
+  const di=gzIdx(ti.P[2]), fuTou=di-di%5, ftZ=Z[fuTou%12];
+  const yuan='子午卯酉'.includes(ftZ)?0:'寅申巳亥'.includes(ftZ)?1:2;
+  const ju=QM_JU[k][yuan];
+  const diPan={};for(let i=0;i<9;i++){const p=yang?((ju-1+i)%9)+1:((ju-1-i+90)%9)+1;diPan[p]=YI[i]}
+  const stemPal=st=>{for(let p=1;p<=9;p++)if(diPan[p]===st)return p};
+  const hgz=ti.P[3], hi=gzIdx(hgz), xun=Math.floor(hi/10), xunYi='戊己庚辛壬癸'[xun], xunZ=Z[(xun*10)%12];
+  let fP=stemPal(xunYi);const fStarP=fP===5?2:fP;const zhiFu=STAR_AT[fStarP], zhiShi=DOOR_AT[fStarP];
+  let hs=hgz[0]==='甲'?xunYi:hgz[0];let tP=stemPal(hs);if(tP===5)tP=2;
+  const off=(RING.indexOf(tP)-RING.indexOf(fStarP)+8)%8;
+  const stars={},tianGan={};RING.forEach(p=>{const dest=RING[(RING.indexOf(p)+off)%8];stars[dest]=STAR_AT[p];tianGan[dest]=diPan[p]+(p===2?diPan[5]:'')});
+  const steps=(Z.indexOf(hgz[1])-Z.indexOf(xunZ)+12)%12;
+  let sp=fP;for(let i=0;i<steps;i++)sp=yang?(sp%9)+1:((sp+7)%9)+1;if(sp===5)sp=2;
+  const doorOrig=fStarP;const doff=(RING.indexOf(sp)-RING.indexOf(doorOrig)+8)%8;
+  const doors={};RING.forEach(p=>{doors[RING[(RING.indexOf(p)+doff)%8]]=DOOR_AT[p]});
+  const gods={};const gi=RING.indexOf(tP);GODS.forEach((g,i)=>{gods[RING[(gi+(yang?i:-i)+16)%8]]=g});
+  const kong=XUNKONG(hgz).map(z=>ZHI_GONG[z]);const ma=ZHI_GONG[YIMA[hgz[1]]];
+  return {k,yang,ju,yuan,diPan,stars,tianGan,doors,gods,zhiFu,zhiShi,xunYi,hgz,kong,ma,stemPal,fuyin:off===0,fanyin:off===4};
+}
+const QM_USE={財運:['door','生門'],事業:['door','開門'],感情:['god','六合'],健康:['star','天心'],考試學業:['door','景門'],家宅置產:['door','生門'],外出:['door','開門'],人際:['god','六合'],子女:['god','六合'],長輩文書:['door','景門'],心情精神:['door','休門'],手足:['god','六合'],整體:['door','開門']};
+const GE={'丙戊':['飛鳥跌穴',1],'戊丙':['青龍返首',1],'乙辛':['青龍逃走',-1],'辛乙':['白虎猖狂',-1],'丁癸':['朱雀投江',-1],'癸丁':['螣蛇夭矯',-1],'乙丙':['奇儀順遂',0.5],'丙乙':['日月並行',0.5],'乙丁':['奇儀相佐',0.5],'丁乙':['人遁吉格',0.6],'庚庚':['太白同宮',-0.7],'辛辛':['伏吟天庭',-0.4],'壬壬':['天羅自刑',-0.5],'癸癸':['天網四張',-0.6]};
+function qimenHTML(ti,q,topic){
+  const Q=qimen(ti);
+  let s=(q?`<p><b>問：</b>${esc(q)}</p>`:'')+`<p class="small mute">起局：${ti.label}，${JQ[Q.k]}${['上','中','下'][Q.yuan]}元，${Q.yang?'陽':'陰'}遁${Q.ju}局；${Q.hgz}時旬首${Q.xunYi}，值符${Q.zhiFu}、值使${Q.zhiShi}；空亡在${Q.kong.map(p=>GONG_N[p]).join('、')}宮，驛馬在${GONG_N[Q.ma]}宮。類別：${topic.n}</p>`;
+  const nianGan=A&&BZ?BZ.P[0][0]:null;const ngStem=nianGan==='甲'?'戊':nianGan;let ngP=ngStem?Q.stemPal(ngStem):null;
+  // 年命在天盤：找天盤干含年命干的宮
+  let mingP=null;if(ngStem){for(const p of RING)if((Q.tianGan[p]||'').includes(ngStem)){mingP=p;break}}
+  const [ut,uv]=QM_USE[topic.n]||['door','開門'];
+  let useP=null;for(const p of RING){if(ut==='door'&&Q.doors[p]===uv)useP=p;if(ut==='god'&&Q.gods[p]===uv)useP=p;if(ut==='star'&&Q.stars[p]===uv)useP=p}
+  if(!useP)useP=RING[0];
+  const cell=p=>{const hl=p===useP?'background:var(--hl);':p===mingP?'outline:2px solid var(--acc);':'';
+    if(p===5)return `<td style="border:1px solid var(--line);padding:4px;text-align:center;vertical-align:top" class="small"><div class="mute">中五</div><div>地 ${Q.diPan[5]}</div></td>`;
+    return `<td style="border:1px solid var(--line);padding:4px;text-align:center;vertical-align:top;${hl}" class="small"><div class="mute">${GONG_N[p]}${p}${Q.kong.includes(p)?'・空':''}${Q.ma===p?'・馬':''}</div><div>${Q.gods[p]}</div><div><b>${Q.stars[p]}</b></div><div><b>${Q.doors[p]}</b></div><div>天 ${Q.tianGan[p]}／地 ${Q.diPan[p]}</div></td>`};
+  s+=`<h3>九宮盤</h3><table style="width:100%;border-collapse:collapse;table-layout:fixed"><tr>${[4,9,2].map(cell).join('')}</tr><tr>${[3,5,7].map(cell).join('')}</tr><tr>${[8,1,6].map(cell).join('')}</tr></table><p class="small mute">上南下北、左東右西。黃底為用神宮${mingP?'，框線為你的年命宮':''}。</p>`;
+  let sc=0;const notes=[];
+  const dr=Q.doors[useP],st=Q.stars[useP],gd=Q.gods[useP];
+  sc+=DOOR_SC[dr]*0.8+STAR_SC[st]*0.5+GOD_SC[gd]*0.5;
+  notes.push(`用神「${uv}」落${GONG_N[useP]}${useP}宮：門${dr}、星${st}、神${gd}`);
+  const pr=rel(GONG_W[useP],DOOR_W[dr]);
+  if(pr==='我剋'){sc+=0.2;notes.push(`宮剋門（${GONG_W[useP]}剋${DOOR_W[dr]}）為「門制」，事情可控但費力`)}
+  if(pr==='剋我'){sc-=0.6;notes.push(`門剋宮（${DOOR_W[dr]}剋${GONG_W[useP]}）為「門迫」，${DOOR_SC[dr]>0?'吉門被迫，好事打折':'凶門更凶'}`)}
+  if(pr==='生我'){sc+=0.4;notes.push(`門生宮，得助力`)}
+  if(Q.kong.includes(useP)){sc-=0.7;notes.push('用神宮落空亡，事情虛而不實、容易落空或延遲')}
+  if(Q.ma===useP)notes.push('用神宮逢驛馬，事情動得快，有變動或奔波');
+  const ge=GE[(Q.tianGan[useP]||'')[0]+(Q.diPan[useP]||'')];if(ge){sc+=ge[1];notes.push(`用神宮天盤${Q.tianGan[useP][0]}加地盤${Q.diPan[useP]}，成「${ge[0]}」格（${ge[1]>0?'吉':'凶'}）`)}
+  if(Q.fuyin){sc-=0.4;notes.push('九星伏吟（星不動），事情停滯、宜守')}
+  if(Q.fanyin){sc-=0.4;notes.push('九星反吟，事情反覆、來回')}
+  if(mingP){const r=rel(GONG_W[mingP],GONG_W[useP]);
+    notes.push(`你的年命（生年天干${nianGan}${nianGan==='甲'?'→遁於戊':''}）在天盤落${GONG_N[mingP]}${mingP}宮，與用神宮的關係是「${{比和:'同氣相助',我生:'你要付出去追求',生我:'目標來生扶你，容易得到',我剋:'你能掌握目標',剋我:'目標對你形成壓力'}[r]}」`);
+    sc+=r==='生我'||r==='比和'?0.5:r==='我剋'?0.3:r==='剋我'?-0.5:0;
+    notes.push(`年命宮見${Q.doors[mingP]||'—'}、${Q.stars[mingP]||'—'}、${Q.gods[mingP]||'—'}，代表你本人目前的狀態`);sc+=(DOOR_SC[Q.doors[mingP]]||0)*0.3}
+  s+=`<h3>局象判斷</h3>${notes.map(n=>`<p class="small">・${n}。</p>`).join('')}`;
+  const link=chartLink({topic,date:ti.dateStr,wx:[[GONG_W[useP],0.7,`用神宮（${GONG_N[useP]}宮）`],[DOOR_W[dr],0.4,dr]]});
+  s+=link.html+verdictHTML(Math.max(-3,Math.min(3,sc)),link,'奇門');
+  s+=`<p class="small mute">時家轉盤奇門，拆補法定元（以日干支的符頭定上中下元），中五寄坤；八神用值符、螣蛇、太陰、六合、白虎、玄武、九地、九天。年命取八字生年天干在天盤的位置。置閏法、飛盤法的結果會不同。</p>`;
+  return s;
+}
+
+// ---------- 太乙神數（時計，並附年計） ----------
+const TY_PAL=[1,2,3,4,6,7,8,9];
+const TY_GN={1:'乾',2:'離',3:'艮',4:'震',5:'中',6:'兌',7:'坤',8:'坎',9:'巽'};
+const TY_W={1:'金',2:'火',3:'土',4:'木',5:'土',6:'金',7:'土',8:'水',9:'木'};
+const R16=['子','丑','艮','寅','卯','辰','巽','巳','午','未','坤','申','酉','戌','乾','亥'];
+const SHEN16={子:'地主',丑:'陽德',艮:'和德',寅:'呂申',卯:'高叢',辰:'太陽',巽:'大炅',巳:'大神',午:'大威',未:'天道',坤:'大武',申:'武德',酉:'太簇',戌:'陰主',乾:'陰德',亥:'大義'};
+const R16_GONG={子:8,艮:3,卯:4,巽:9,午:2,坤:7,酉:6,乾:1};
+function tyCore(ju,yang){
+  const r24=ju%24||24, gi=Math.ceil(r24/3)-1, taiyi=yang?TY_PAL[gi]:TY_PAL[7-gi], li=['理天','理地','理人'][(r24-1)%3];
+  const steps16=(start,n)=>{let pos=R16.indexOf(start),c=1;while(c<n){pos=(pos+1)%16;c++;const nm=R16[pos];if((nm==='乾'||nm==='坤')&&c<n){c++}}return R16[pos]};
+  const r18=ju%18||18, wenchang=steps16(yang?'申':'寅',r18);
+  const r12=ju%12||12;const Z12='子丑寅卯辰巳午未申酉戌亥';const jishen=Z12[((Z12.indexOf(yang?'寅':'申')-(r12-1))%12+12)%12];
+  const shift=(R16.indexOf('艮')-R16.indexOf(jishen)+16)%16, shiji=R16[(R16.indexOf(wenchang)+shift)%16];
+  const suan=from=>{let pos=R16.indexOf(from),sum=R16_GONG[from]||1,guard=0;const tyName=Object.keys(R16_GONG).find(k=>R16_GONG[k]===taiyi);
+    if(from===tyName)return sum;
+    while(guard++<16){pos=(pos+1)%16;const nm=R16[pos];if(nm===tyName)break;if(R16_GONG[nm])sum+=R16_GONG[nm]}return sum};
+  const zhu=suan(wenchang), ke=suan(shiji);
+  const jiang=n=>{let d=n%10;if(d===0)d=n%9||9;return d}, can=d=>{let x=(d*3)%10;return x===0?9:x};
+  const zd=jiang(zhu),zc=can(zd),kd=jiang(ke),kc=can(kd);
+  return {ju,yang,taiyi,li,wenchang,jishen,shiji,zhu,ke,zd,zc,kd,kc};
+}
+function suanType(n){const t=[];t.push(n>=10?'長數':'短數');if(n<10)t.push('無天之數');else if(n%10===0)t.push('無地之數');else if(n%10<5)t.push('無人之數');else t.push('三才足數');return t}
+function taiyi(ti){
+  const jinian=ti.y+10153917;const juY=jinian%72||72;const yearC=tyCore(juY,true);
+  const days=Math.floor(ti.jd+0.5+8/24)-2451551; // 2000-01-07 為甲子日附近，作為時計起算
+  const hourIdx=Math.floor(((ti.hh+1)%24)/2);
+  const jishi=((days%60+60)%60)*12+hourIdx;const k=jqIdx(ti.sun);const yang=k<12;
+  const juH=jishi%72||72;const hourC=tyCore(juH,yang);
+  return {jinian,yearC,hourC,yang};
+}
+function tyGe(c){const n=[];let sc=0;const nb=p=>{const i=TY_PAL.indexOf(c.taiyi);return [TY_PAL[(i+1)%8],TY_PAL[(i+7)%8]].includes(p)};
+  const sjG=R16_GONG[c.shiji], wcG=R16_GONG[c.wenchang];
+  if(sjG===c.taiyi){sc-=1;n.push('始擊與太乙同宮，成「掩」：客方壓主，所問之事受外力掩蓋，宜守')}
+  else if(sjG&&nb(sjG)){sc-=0.5;n.push('始擊在太乙鄰宮，成「迫」：外部壓力逼近')}
+  if(wcG&&nb(wcG)){sc-=0.3;n.push('文昌在太乙鄰宮，成「迫」：自身內部有掣肘')}
+  if(c.zd===c.taiyi||c.kd===c.taiyi){sc-=0.7;n.push(`${c.zd===c.taiyi?'主':'客'}大將與太乙同宮，成「囚」：主事者受困`)}
+  if(c.zd===c.kd){sc-=0.3;n.push('主客大將同宮，成「關」：雙方相持不下')}
+  if(c.zhu>c.ke){sc+=0.5;n.push(`主算${c.zhu}大於客算${c.ke}，主方（你）較有利`)}else if(c.zhu<c.ke){sc-=0.3;n.push(`主算${c.zhu}小於客算${c.ke}，客方（外在、對方）較強，宜後發制人`)}else n.push('主客算相等，勢均力敵');
+  const zt=suanType(c.zhu);if(zt.includes('三才足數')){sc+=0.4;n.push('主算為三才足數，主方條件完備')}else if(zt.includes('長數'))sc+=0.2;else{sc-=0.2;n.push(`主算為${zt.join('、')}，主方條件有缺`)}
+  return {sc,n}}
+function taiyiHTML(ti,q,topic){
+  const T=taiyi(ti), c=T.hourC, y=T.yearC;
+  let s=(q?`<p><b>問：</b>${esc(q)}</p>`:'')+`<p class="small mute">起局：${ti.label}。年計：積年 ${T.jinian}，第 ${y.ju} 局；時計：${T.yang?'陽':'陰'}遁第 ${c.ju} 局。類別：${topic.n}</p>`;
+  const row=(lab,cc)=>`<tr><td>${lab}</td><td>${TY_GN[cc.taiyi]}${cc.taiyi}宮（${cc.li}）</td><td>${cc.wenchang}（${SHEN16[cc.wenchang]}）</td><td>${cc.shiji}（${SHEN16[cc.shiji]}）</td><td>${cc.zhu}／${cc.ke}</td><td>${cc.zd}・${cc.zc}</td><td>${cc.kd}・${cc.kc}</td></tr>`;
+  s+=`<h3>局式</h3><div style="overflow-x:auto"><table class="small"><tr><th></th><th>太乙</th><th>文昌（主目）</th><th>始擊（客目）</th><th>主算／客算</th><th>主大將・參將</th><th>客大將・參將</th></tr>${row('時計（本事）',c)}${row('年計（大環境）',y)}</table></div>`;
+  const g=tyGe(c), gy=tyGe(y);
+  s+=`<h3>局象判斷</h3><p class="small"><b>時計（所問之事）：</b></p>${g.n.map(x=>`<p class="small">・${x}。</p>`).join('')}<p class="small"><b>年計（今年大環境）：</b>${gy.n.slice(0,3).join('；')}。</p>`;
+  let sc=g.sc+gy.sc*0.3;
+  if(A&&BZ){const bi=BZ.P[0];const by=+$('y').value&&($('era').value==='roc'?+$('y').value+1911:+$('y').value);
+    if(by){const bc=tyCore((by+10153917)%72||72,true);const r=rel(TY_W[bc.taiyi],TY_W[c.taiyi]);
+      s+=`<p class="small"><b>和你的出生年局對照：</b>你出生那年太乙在${TY_GN[bc.taiyi]}宮（${TY_W[bc.taiyi]}），這次時計太乙在${TY_GN[c.taiyi]}宮（${TY_W[c.taiyi]}），關係是「${{比和:'同氣，順著本命的步調',我生:'要你多付出',生我:'時勢生扶本命，有利',我剋:'你能駕馭時勢',剋我:'時勢壓本命，宜謹慎'}[r]}」。</p>`;
+      sc+=r==='生我'||r==='比和'?0.4:r==='剋我'?-0.4:0}}
+  const link=chartLink({topic,date:ti.dateStr,wx:[[TY_W[c.zd===5?7:c.zd],0.6,`主大將（${TY_GN[c.zd]}宮）`],[TY_W[c.taiyi],0.4,`太乙宮（${TY_GN[c.taiyi]}）`]]});
+  s+=link.html+verdictHTML(Math.max(-3,Math.min(3,sc)),link,'太乙');
+  s+=`<p class="small mute">太乙採《太乙統宗》系統：積年＝西元年＋10153917，七十二局；太乙三年一移、不入中五；文昌起武德（陰遁起呂申）、遇陰德大武重留一算；計神陽遁起寅逆行；始擊以計神加和德求得；主客算為八正宮數相加至太乙前一宮。時計以日干支、時辰累計起局，各家起局法不一，結果僅供參考。太乙原本主要用於國運與大環境，個人問事屬延伸用法。</p>`;
+  return s;
+}
+
+// ---------- 介面 ----------
+function mount(id,title,intro,fn,label){
+  const sec=$('tab-'+id);sec.innerHTML=`<div class="card"><h2>${title}</h2><p class="small mute">${intro}</p>${TOPIC_FORM(id)}<div class="row" style="margin-top:8px"><button class="primary" id="${id}Go">${label}</button></div><div id="${id}Out" style="margin-top:10px"></div></div>`;
+  initTime(id);
+  $(id+'Go').onclick=()=>safe(()=>{const q=$(id+'Q').value.trim();const topic=topicOf(q,$(id+'Tp').value);const ti=timeInfo($(id+'D').value||today(),$(id+'T').value);$(id+'Out').innerHTML=fn(ti,q,topic)},id+'Out');
+}
+function init(){
+  mount('lr','大六壬','以起課時間的月將加時，立四課、發三傳、布十二天將，再結合你的命盤判斷。',liurenHTML,'起課');
+  mount('qm','奇門遁甲','以起局時間排時家奇門，找出所問事情的用神宮與你的年命宮，再結合命盤判斷。',qimenHTML,'起局');
+  mount('ty','太乙神數','以起局時間排太乙時計（所問之事）與年計（大環境），看主客勝負，再結合命盤判斷。',taiyiHTML,'起局');
+  // 塔羅：改成三張牌＋牌面＋結合命盤
+  const tu=$('tarotUI');
+  tu.innerHTML=`${TOPIC_FORM('tr')}<div class="row" style="margin-top:6px"><select id="tsp">${Object.entries(TAROT.SPREADS).map(([k,v])=>`<option value="${k}"${k==='three'?' selected':''}>${v.n}</option>`).join('')}</select><button class="primary" id="tgo">抽牌</button></div><div id="tout" style="margin-top:10px"></div>`;
+  initTime('tr');const lab=[...tu.querySelectorAll('label')].find(l=>l.textContent==='起課時間');if(lab)lab.textContent='日期';$('trT').style.display='none';
+  $('tgo').onclick=()=>safe(()=>{const sp=TAROT.SPREADS[$('tsp').value],cards=TAROT.draw(sp.pos.length);const q=$('trQ').value.trim();const topic=topicOf(q,$('trTp').value);$('tout').innerHTML=tarotReading(cards,sp.pos,q,topic,$('trD').value||today())},'tout');
+  // 易經：起卦後附上結合命盤
+  const prev=$('yjGo').onclick;
+  const LYMAP={財運:'財運投資',事業:'事業工作',考試學業:'考試文書',長輩文書:'考試文書',健康:'健康平安',人際:'朋友合夥',手足:'朋友合夥'};
+  $('yjGo').onclick=()=>{try{const ly=$('lyQ');if(ly){const q=$('yjQ').value.trim(),sel=$('yjTp')?$('yjTp').value:'auto';const tp=topicOf(q,sel);if(sel!=='auto'||tp.n!=='整體'){const k=tp.n==='感情'?($('g')&&$('g').value==='女'?'感情女問':'感情男問'):(LYMAP[tp.n]||'自身運勢');ly.value=k}}}catch(e){}
+    prev();safe(()=>{const r=window.__lastCast;if(!r)return;const q=$('yjQ').value.trim();const topic=topicOf(q,$('yjTp')?$('yjTp').value:'auto');const div=document.createElement('div');div.innerHTML=yijingLink(r,q,topic,today());$('yjOut').appendChild(div)},'yjOut')};
+  const qi=$('yjQ');if(qi&&!$('yjTp')){const row=document.createElement('div');row.className='row small';row.style.marginTop='6px';row.innerHTML=`<label>類別</label><select id="yjTp"><option value="auto">依問題自動判斷</option>${TOPIC_NAMES.map(n=>`<option>${n}</option>`).join('')}</select>`;qi.parentNode.after(row)}
+}
+return {init,cardSVG,liuren,qimen,taiyi,tyCore,chartLink,timeInfo};
+})();
+</script>
+<script>try{ZHAN.init()}catch(e){console.error(e)}</script>
 <script>
 // 計數：只送「哪一頁／哪個功能被用了一次」，不含任何輸入內容；本機開檔（file://）時不計數。
 (function(){
@@ -1999,7 +2396,7 @@ return {yearReport,lifeReport};
   }
   gc(location.pathname||'/','紫微・八字・星座・占卜',false);
   function onClick(id,name){var el=document.getElementById(id);if(el)el.addEventListener('click',function(){gc('use-'+name,name,true)})}
-  onClick('go','排盤');onClick('askGo','問命盤');onClick('tgo','塔羅');onClick('cGo','流日日曆');onClick('yjGo','易經卜卦');onClick('lnGo','流年詳批');
+  onClick('go','排盤');onClick('askGo','問命盤');onClick('tgo','塔羅');onClick('cGo','流日日曆');onClick('yjGo','易經卜卦');onClick('lnGo','流年詳批');onClick('lrGo','大六壬');onClick('qmGo','奇門遁甲');onClick('tyGo','太乙神數');
   window.__fbOK=1;
   document.addEventListener('zw-feedback',function(e){try{(e.detail||[]).slice(0,10).forEach(function(x){var k=String(x.k).replace(/[^a-z]/g,'').slice(0,6),v=Math.max(1,Math.min(5,parseInt(x.v,10)||0));gc('fb-'+k+'-'+v,'回饋 '+k+' '+v+'分',true)})}catch(err){}});
   document.querySelectorAll('.tabs button').forEach(function(b){b.addEventListener('click',function(){var t=b.dataset.tab||b.dataset.main;if(t&&!seen[t]){seen[t]=1;gc('tab-'+t,'分頁 '+b.textContent,true)}})});
