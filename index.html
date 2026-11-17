@@ -2704,6 +2704,259 @@ return {setup,westNoHour,solarHouse,moonText};
 })();
 NH.setup();
 </script>
+<script>// ===== 各系統問答（八字・星座・易經・整合）與完整命書：全部離線規則推算 =====
+const QA=(function(){
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const G='甲乙丙丁戊己庚辛壬癸',Z='子丑寅卯辰巳午未申酉戌亥';
+const GW={甲:'木',乙:'木',丙:'火',丁:'火',戊:'土',己:'土',庚:'金',辛:'金',壬:'水',癸:'水'};
+const ZW={子:'水',丑:'土',寅:'木',卯:'木',辰:'土',巳:'火',午:'火',未:'土',申:'金',酉:'金',戌:'土',亥:'水'};
+const MAIN={子:'癸',丑:'己',寅:'甲',卯:'乙',辰:'戊',巳:'丙',午:'丁',未:'己',申:'庚',酉:'辛',戌:'戊',亥:'壬'};
+const SHENG={木:'火',火:'土',土:'金',金:'水',水:'木'},KE={木:'土',土:'水',水:'火',火:'金',金:'木'};
+const zi=z=>Z.indexOf(z);
+const LIUHE=(a,b)=>(zi(a)+zi(b))%12===1, CHONG=(a,b)=>(zi(a)-zi(b)+12)%12===6, SANHE=(a,b)=>a!==b&&(zi(a)-zi(b)+12)%4===0;
+const YIMA={申:'寅',子:'寅',辰:'寅',寅:'申',午:'申',戌:'申',巳:'亥',酉:'亥',丑:'亥',亥:'巳',卯:'巳',未:'巳'};
+const GR=sc=>sc>=1.5?['大吉','var(--lu)']:sc>=0.5?['吉','var(--lu)']:sc>-0.5?['平','var(--ke)']:sc>-1.5?['小凶','var(--quan)']:['凶','var(--ji)'];
+const badge=sc=>{const [g,c]=GR(sc);return `<span class="badge" style="background:${c};font-size:14px;padding:2px 10px">${g}</span>`};
+const ADV={大吉:'時機有利，可以積極推進，但仍照計畫控管風險。',吉:'整體順利，可以正常進行、適度爭取。',平:'好壞參半，照原計畫走，不必勉強。',小凶:'阻力較多，宜保守、多做準備，重大決定可延後。',凶:'時機不利，宜守不宜攻，避免冒險與重大承諾。'};
+const ymd=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+function P(q){const r=ASK.parse(q||'');return r}
+function scopeLabel(s){return {natal:'本命（先天）',scan:'找時間點（未來 12 年）',day:`${s.date} 流日`,month:`${(s.date||'').slice(0,7)} 流月`,year:`${s.y} 年流年`,decade:'目前這步運'}[s.type]}
+function scopeDate(s){if(s.type==='day'||s.type==='month')return s.date;if(s.type==='year')return `${s.y}-07-01`;return ymd(new Date())}
+
+// ================= 八字 =================
+const SS_EL=ss=>{const d=BZ.dmw;return {比肩:d,劫財:d,食神:SHENG[d],傷官:SHENG[d],偏財:KE[d],正財:KE[d],七殺:Object.keys(KE).find(k=>KE[k]===d),正官:Object.keys(KE).find(k=>KE[k]===d),偏印:Object.keys(SHENG).find(k=>SHENG[k]===d),正印:Object.keys(SHENG).find(k=>SHENG[k]===d)}[ss]};
+const ssG=ch=>BAZI.shishen(BZ.dm,ch), ssZ=ch=>BAZI.shishen(BZ.dm,MAIN[ch]);
+function bzTopic(n){const male=(BIRTH&&BIRTH.gender||'男')==='男';
+  return {財運:{ss:['正財','偏財'],why:'八字看財以「財星」（日主所剋的五行）為主，身強才擔得起財'},
+    事業:{ss:['正官','七殺','食神','傷官'],why:'官殺代表職位、權責與壓力，食傷代表技術、表現與創意'},
+    感情:{ss:male?['正財','偏財']:['正官','七殺'],why:`${male?'男命以財星為妻':'女命以官殺為夫'}，再看日支（配偶宮）的合沖`},
+    健康:{ss:[],why:'八字看健康以五行是否平衡、哪一行過旺或過弱為主'},
+    考試學業:{ss:['正印','偏印','正官'],why:'印星主學問、證照、文書，正官主考取功名'},
+    家宅置產:{ss:['正印','正財'],why:'印星代表房屋、庇蔭，正財代表穩定可累積的資產'},
+    外出:{ss:[],why:'八字看外出、變動以「驛馬」與沖動為主'},
+    人際:{ss:['比肩','劫財'],why:'比劫代表朋友、同儕與競爭者'},
+    子女:{ss:male?['正官','七殺']:['食神','傷官'],why:male?'男命以官殺為子女':'女命以食傷為子女'},
+    長輩文書:{ss:['正印','偏印'],why:'印星代表長輩、上司、文書合約'},
+    心情精神:{ss:['食神','偏印'],why:'食神主放鬆享受，偏印主思慮、孤獨感'},
+    手足:{ss:['比肩','劫財'],why:'比劫代表兄弟姊妹'},
+    整體:{ss:[],why:'整體看流年、大運的天干地支是喜用還是忌神'}}[n]||{ss:[],why:'整體看流年、大運的天干地支是喜用還是忌神'}}
+function pillarsAt(date){const [y,m,d]=date.split('-').map(Number);return BAZI.compute({y,m,d,hh:12,mm:0,tz:8,dst:false,gender:'男'}).P}
+function dayunAt(year){let cur=null;(BZ.dayun||[]).forEach(d=>{if(year>=Math.floor(d.year))cur=d});return cur}
+function scoreGZ(gz,T,lines,label,w){let sc=0;const g=gz[0],z=gz[1];
+  const gw=GW[g],zw=ZW[z];const gs=ssG(g),zs=ssZ(z);
+  const f=(wx,ss,part)=>{let v=BZ.xi.includes(wx)?1:BZ.ji.includes(wx)?-1:0;sc+=v*0.6*w;
+    if(T.ss.includes(ss)){sc+=(v>=0?0.8:0.2)*w;lines.push(`${label}${part}是「${ss}」（${wx}，${v>0?'喜用':v<0?'忌神':'中性'}），正好是所問之事的星，${v>0?'有利、事情容易成形':'事情會發生，但伴隨壓力或代價'}`)}};
+  f(gw,gs,'天干'+g);f(zw,zs,'地支'+z);
+  lines.push(`${label}${gz}：天干${g}為${gs}（${BZ.xi.includes(gw)?'喜':BZ.ji.includes(gw)?'忌':'平'}），地支${z}為${zs}（${BZ.xi.includes(zw)?'喜':BZ.ji.includes(zw)?'忌':'平'}）`);
+  return sc}
+function bzAnswer(q){
+  if(!BZ)return {html:'<p class="mute">請先輸入生辰並排盤。</p>',sc:0};
+  const {topic,scope}=P(q);const n=topic.n==='整體運勢'?'整體':topic.n;const T=bzTopic(n);
+  let s=`<p class="small mute">理解為：問「${n}」・${scopeLabel(scope)}。${T.why}。</p>`;let sc=0;const lines=[];
+  // 本命
+  const have=BZ.ssList.filter(([k])=>T.ss.includes(k));const tot=BZ.ssList.reduce((a,x)=>a+x[1],0);
+  const natal=[];
+  natal.push(`日主${BZ.dm}${BZ.dmw}，${BZ.strong?'身強':'身弱'}，${BZ.geju}；喜${BZ.xi.join('、')}，忌${BZ.ji.join('、')}。`);
+  if(T.ss.length){
+    if(have.length){natal.push(`命中「${have.map(([k,v])=>k+'×'+v).join('、')}」，占全局約 ${Math.round(have.reduce((a,x)=>a+x[1],0)/tot*100)}%。${have.map(([k])=>'【'+k+'】'+BAZI.SS[k]).join('')}`);}
+    else natal.push(`命中沒有明顯的${T.ss.join('、')}，這方面要靠大運、流年引動才會明顯。`);
+    const els=[...new Set(T.ss.map(SS_EL))];const good=els.filter(e=>BZ.xi.includes(e)),bad=els.filter(e=>BZ.ji.includes(e));
+    if(good.length){sc+=0.6;natal.push(`這類星的五行（${good.join('、')}）是你的喜用神：先天上這方面能為你所用。`)}
+    if(bad.length){sc-=0.4;natal.push(`這類星的五行（${bad.join('、')}）是你的忌神：這方面容易帶來壓力或得而復失，要靠方法與紀律化解。`)}
+    if(n==='財運')natal.push(BZ.strong?'身強能任財：有本事接住大財，適合主動開創。':'身弱財多：財來時容易力不從心，宜借團隊、合作或穩健方式求財。');
+  }
+  if(n==='感情'){const dz=BZ.P[2][1];natal.push(`日支（配偶宮）${dz}，為${ssZ(dz)}：${BAZI.SS[ssZ(dz)]}`)}
+  if(n==='健康'){const r=BZ.ratio||{};const arr=Object.entries(BZ.wx).sort((a,b)=>b[1]-a[1]);
+    const ORG={木:'肝膽、筋骨、神經',火:'心血管、眼睛、睡眠',土:'脾胃、消化、皮膚',金:'肺、呼吸道、大腸',水:'腎、泌尿、生殖、內分泌'};
+    natal.push(`五行最旺的是${arr[0][0]}、最弱的是${arr[arr.length-1][0]}。過旺或過弱的五行對應的部位要多留意：${arr[0][0]}（${ORG[arr[0][0]]}）、${arr[arr.length-1][0]}（${ORG[arr[arr.length-1][0]]}）。`);
+    const lack=Object.entries(BZ.wx).filter(([,v])=>v<0.5).map(([k])=>k);if(lack.length)natal.push(lack.map(k=>BAZI.WX_LACK[k]).join(''))}
+  if(n==='事業'){natal.push(`有利的行業方向（依喜用神）：${BZ.xi.map(w=>BAZI.WX_ITEM[w]).join('；')}。`)}
+  if(n==='外出'){const ym=YIMA[BZ.P[0][1]],dm=YIMA[BZ.P[2][1]];natal.push(`你的驛馬在${[...new Set([ym,dm])].join('、')}：遇到這些地支的年、月，容易有外出、搬遷或變動。`)}
+  if(n==='整體'){natal.push(BAZI.DM[BZ.dm]);natal.push(BAZI.GEJU_DESC[BZ.geju]||'')}
+  s+=`<p class="small"><b>先天：</b>${natal.join('')}</p>`;
+  // 時間
+  if(scope.type==='scan'){const Y=new Date().getFullYear(),rows=[];
+    for(let y=Y;y<Y+12;y++){const p=pillarsAt(`${y}-07-01`);const L=[];let v=scoreGZ(p[0],T,L,'流年',1);const du=dayunAt(y);if(du)v+=scoreGZ(du.p,T,[],'',0.5);
+      if(n==='感情'){if(LIUHE(p[0][1],BZ.P[2][1])){v+=0.8;L.unshift('流年地支合日支（配偶宮），姻緣動')}if(CHONG(p[0][1],BZ.P[2][1])){v-=0.5;L.unshift('流年沖日支（配偶宮），感情有變動')}}
+      if(n==='外出'&&[YIMA[BZ.P[0][1]],YIMA[BZ.P[2][1]]].includes(p[0][1])){v+=1;L.unshift('流年逢驛馬，有遠行、遷移')}
+      rows.push({y,p:p[0],v,L,du})}
+    const top=[...rows].sort((a,b)=>b.v-a.v).slice(0,3),low=[...rows].sort((a,b)=>a.v-b.v).slice(0,2);
+    s+=`<p><b>答：</b>八字看「${n}」，未來 12 年最有利的是 <b>${top.map(r=>r.y).join('、')}</b> 年，最要保守的是 <b>${low.map(r=>r.y).join('、')}</b> 年。</p><table class="small"><tr><th>年</th><th>流年</th><th>大運</th><th>評等</th><th>重點</th></tr>${rows.map(r=>{const [g,c]=GR(r.v);return `<tr${top.includes(r)?' class="flag"':''}><td>${r.y}</td><td>${r.p}</td><td>${r.du?r.du.p:''}</td><td style="color:${c};font-weight:700">${g}</td><td>${esc(r.L[0]||'')}</td></tr>`}).join('')}</table>`;
+    return {html:s,sc:(top[0]||{v:0}).v};
+  }
+  if(scope.type!=='natal'){const date=scopeDate(scope);const p=pillarsAt(date);const yy=+date.slice(0,4);
+    const idx={year:0,month:1,day:2,decade:-1}[scope.type];
+    if(idx>=0){sc+=scoreGZ(p[idx],T,lines,{0:'流年',1:'流月',2:'流日'}[idx],1)}
+    const du=dayunAt(yy);if(du){sc+=scoreGZ(du.p,T,lines,'大運',scope.type==='decade'?1:0.5)}
+    const tz=idx>=0?p[idx][1]:(du?du.p[1]:null);
+    if(tz){if(n==='感情'){if(LIUHE(tz,BZ.P[2][1])){sc+=0.8;lines.push(`${tz}與日支${BZ.P[2][1]}六合：配偶宮被合動，有桃花、姻緣或關係更緊密`)}if(CHONG(tz,BZ.P[2][1])){sc-=0.6;lines.push(`${tz}沖日支${BZ.P[2][1]}：配偶宮被沖，感情或家庭有變動`)}}
+      if(CHONG(tz,BZ.P[1][1]))lines.push(`${tz}沖月柱${BZ.P[1][1]}：工作、環境有變動`);
+      if(CHONG(tz,BZ.P[0][1]))lines.push(`${tz}沖年柱${BZ.P[0][1]}：長輩、大環境有變動`);
+      if([YIMA[BZ.P[0][1]],YIMA[BZ.P[2][1]]].includes(tz)){lines.push(`逢驛馬（${tz}）：奔波、外出、搬遷、變動多`);if(n==='外出')sc+=0.8}}
+    s+=`<p><b>答：</b>${scopeLabel(scope)}，八字看「${n}」屬${badge(sc)}。${ADV[GR(sc)[0]]}</p><p class="small"><b>時間面：</b><br>${lines.map(esc).join('<br>')}</p>`;
+  }else s+=`<p><b>答：</b>以先天來看，八字的「${n}」屬${badge(sc)}。想看特定時間，可以在問題加上「今年」「明年」「下個月」「哪一年」。</p>`;
+  return {html:s,sc};
+}
+
+// ================= 星座 =================
+const W_H={財運:[2,8],事業:[10,6],感情:[7,5],健康:[6,1],考試學業:[9,3],家宅置產:[4,2],外出:[9,3],人際:[11,7],子女:[5],長輩文書:[10,4],心情精神:[12,4],手足:[3],整體:[1,10]};
+const RULER=['火星','金星','水星','月亮','太陽','水星','金星','冥王星','木星','土星','天王星','海王星'];
+const BEN={太陽:0.3,月亮:0.3,水星:0.2,金星:0.8,火星:-0.2,木星:1,土星:-0.6,天王星:-0.2,海王星:-0.2,冥王星:-0.3};
+function wsBase(){return WS.ascS==null?WS.P.find(p=>p.n==='太陽').sign:WS.ascS}
+const hOf=sign=>((sign-wsBase()+12)%12)+1;
+function wsAnswer(q){
+  if(!WS)return {html:'<p class="mute">請先輸入生辰並排盤。</p>',sc:0};
+  const {topic,scope}=P(q);const n=topic.n==='整體運勢'?'整體':topic.n;const H=W_H[n]||[1,10];const S=WEST.SIGNS;
+  let s=`<p class="small mute">理解為：問「${n}」・${scopeLabel(scope)}。星盤看第 ${H.join('、')} 宮（${H.map(h=>WEST.HOUSE[h-1]).join('；')}）${WS.ascS==null?'；時辰不詳，以太陽星座當第一宮估算':''}。</p>`;
+  let sc=0;const nat=[];
+  H.forEach((h,i)=>{const sg=(wsBase()+h-1)%12;const pl=WS.P.filter(p=>hOf(p.sign)===h&&!(p.n==='月亮'&&WS.moonAlt));const ru=RULER[sg],rp=WS.P.find(p=>p.n===ru);
+    nat.push(`<b>第${h}宮（${WEST.HOUSE[h-1]}）在${S[sg].n}</b>：${WEST.EL_DESC[S[sg].el]}。${pl.length?`本命有${pl.map(p=>`${p.n}（${WEST.PLANET[p.n]}）`).join('、')}落在這裡，這個領域是你人生的重點舞台。`:'沒有行星坐守，看宮主星。'}宮主星${ru}在${S[rp.sign].n}第${hOf(rp.sign)}宮，這方面的事會透過「${WEST.HOUSE[hOf(rp.sign)-1]}」來展開。`);
+    pl.forEach(p=>{sc+=(BEN[p.n]||0)*(i?0.3:0.5)})});
+  const g=n2=>WS.P.find(p=>p.n===n2);
+  const extra={感情:`金星在${S[g('金星').sign].n}：${S[g('金星').sign].love}`,財運:`金星（價值觀）在${S[g('金星').sign].n}、木星（機會）在${S[g('木星').sign].n}第${hOf(g('木星').sign)}宮`,事業:`太陽在${S[g('太陽').sign].n}：${S[g('太陽').sign].core}`,心情精神:`月亮在${WS.moonAlt?NH.moonText(WS):S[g('月亮').sign].n}：${S[g('月亮').sign].emo}`,人際:`水星在${S[g('水星').sign].n}：${S[g('水星').sign].comm}`,整體:`太陽${S[g('太陽').sign].n}、月亮${WS.moonAlt?NH.moonText(WS):S[g('月亮').sign].n}${WS.ascS!=null?'、上升'+S[WS.ascS].n:''}：${S[g('太陽').sign].core}`}[n];
+  if(extra)nat.push(extra);
+  s+=`<p class="small"><b>本命：</b><br>${nat.join('<br>')}</p>`;
+  const transit=(date)=>{const [y,m,d]=date.split('-').map(Number);const pl=ASTRO.planets(ASTRO.jdUT(y,m,d,4));return Object.entries(pl).map(([k,v])=>({n:k,sign:Math.floor(v.lon/30),lon:v.lon,retro:v.retro}))};
+  if(scope.type==='scan'){const Y=new Date().getFullYear(),rows=[];
+    for(let y=Y;y<Y+12;y++){let v=0;const L=[];for(let mo=1;mo<=12;mo+=1){const t=transit(`${y}-${String(mo).padStart(2,'0')}-15`);const j=t.find(p=>p.n==='木星'),sa=t.find(p=>p.n==='土星');
+        if(H.includes(hOf(j.sign))){v+=1/12*(H[0]===hOf(j.sign)?1.5:0.8);if(!L.includes('j'))L.push('j')}
+        if(H.includes(hOf(sa.sign))){v-=1/12*(H[0]===hOf(sa.sign)?1:0.5);if(!L.includes('s'))L.push('s')}}
+      rows.push({y,v,L})}
+    const top=[...rows].sort((a,b)=>b.v-a.v).slice(0,3),low=[...rows].sort((a,b)=>a.v-b.v).slice(0,2);
+    s+=`<p><b>答：</b>星盤看「${n}」，未來 12 年最有利的是 <b>${top.map(r=>r.y).join('、')}</b> 年（木星行經相關宮位），最要保守的是 <b>${low.map(r=>r.y).join('、')}</b> 年（土星行經）。</p><table class="small"><tr><th>年</th><th>評等</th><th>重點</th></tr>${rows.map(r=>{const [g2,c]=GR(r.v*1.5);return `<tr${top.includes(r)?' class="flag"':''}><td>${r.y}</td><td style="color:${c};font-weight:700">${g2}</td><td>${r.L.includes('j')?'木星擴張、好運':''}${r.L.includes('j')&&r.L.includes('s')?'；':''}${r.L.includes('s')?'土星考驗、慢':''}</td></tr>`}).join('')}</table><p class="small mute">木星約 12 年繞一圈、土星約 29 年，所以「哪一年」主要看這兩顆星走到你的哪一宮。</p>`;
+    return {html:s,sc:top[0]?top[0].v*1.5:0};
+  }
+  if(scope.type!=='natal'){const lines=[];const dates=scope.type==='year'?[3,6,9,12].map(m=>`${scope.y}-${String(m).padStart(2,'0')}-15`):[scopeDate(scope)];
+    const seen=new Set();
+    dates.forEach(dt=>{transit(dt).forEach(p=>{const h=hOf(p.sign);if(!H.includes(h))return;if(scope.type!=='day'&&['月亮'].includes(p.n))return;if(scope.type==='year'&&['太陽','水星','金星','火星'].includes(p.n))return;
+      const key=p.n+h;if(seen.has(key))return;seen.add(key);sc+=(BEN[p.n]||0)*(h===H[0]?1:0.6);
+      lines.push(`行運${p.n}${p.retro?'（逆行）':''}經過第${h}宮（${S[p.sign].n}）：${WEST.PLANET[p.n]}${(BEN[p.n]||0)>0.4?'帶來助力與機會':(BEN[p.n]||0)<-0.4?'帶來壓力與考驗':'帶來變化'}，作用在「${WEST.HOUSE[h-1]}」`)})});
+    const t=transit(scopeDate(scope));const asp=(a,b)=>{let d=Math.abs(a-b);if(d>180)d=360-d;return d<6?'合':Math.abs(d-120)<5?'拱':Math.abs(d-90)<5?'刑':Math.abs(d-180)<5?'沖':null};
+    ['木星','土星'].forEach(tn=>{const tp=t.find(p=>p.n===tn);['太陽','月亮','金星'].forEach(nn=>{if(nn==='月亮'&&WS.moonAlt)return;const np=g(nn);const a=asp(tp.lon,np.lon);if(!a)return;
+      const v=(tn==='木星'?1:-1)*(a==='刑'||a==='沖'?(tn==='木星'?0.3:1):1)*0.4;sc+=v;lines.push(`行運${tn}${a}本命${nn}：${tn==='木星'?'機會、擴張':'責任、壓力'}作用在「${WEST.PLANET[nn]}」`)})});
+    if(!lines.length)lines.push('這段時間沒有重要行星經過相關宮位，屬於平常的狀態。');
+    s+=`<p><b>答：</b>${scopeLabel(scope)}，星盤看「${n}」屬${badge(sc)}。${ADV[GR(sc)[0]]}</p><p class="small"><b>行運：</b><br>${lines.join('<br>')}</p>`;
+  }else s+=`<p><b>答：</b>以本命來看，星盤的「${n}」屬${badge(sc)}。加上「今年」「下個月」「哪一年」可以看行運。</p>`;
+  return {html:s,sc};
+}
+
+// ================= 易經 =================
+function yearGua(y){ // 以該年年支代入本命起卦法
+  const ti=+$('t').value;let ds=A.solarDate;let t2=ti;if(ti===12){const [Y,M,D]=ds.split('-').map(Number);const d=new Date(Date.UTC(Y,M-1,D+1));ds=`${d.getUTCFullYear()}-${d.getUTCMonth()+1}-${d.getUTCDate()}`;t2=0}
+  const a=iztro.astro.bySolar(ds,t2,'男',true,'zh-TW');const L=a.rawDates.lunarDate,hb=a.rawDates.chineseDate.hourly[1];
+  const yb=Z[((y-4)%12+12)%12];const ys=zi(yb)+1,hs=zi(hb)+1,s1=ys+L.lunarMonth+L.lunarDay,s2=s1+hs;
+  const r=YJ.meihua(s1,s2,s2);r.basis=`${y}年為${yb}年（${ys}）＋本命農曆${L.lunarMonth}月${L.lunarDay}日＋${hb}時`;return r}
+function yjAnswer(q){
+  if(!A)return {html:`<p class="mute">${NOHOUR?'時辰不詳，無法起本命卦；可以用「占卜」分頁的易經卜卦直接問事。':'請先輸入生辰並排盤。'}</p>`,sc:0};
+  const {topic,scope}=P(q);const n=topic.n==='整體運勢'?'整體':topic.n;const Gm=benmingGua();
+  let s=`<p class="small mute">理解為：問「${n}」・${scopeLabel(scope)}。易經以本命卦看先天；時間問題用「流年卦」（以該年年支代入本命起卦法）。想問具體某件事，用占卜分頁的卜卦更準。</p>`;
+  const tyLine=ty=>`體卦${ty.ti.n}（${ty.ti.w}，代表你）、用卦${ty.yong.n}（${ty.yong.w}，代表所問之事與環境）：${ty.r}`;
+  const mean=(h)=>n==='財運'?h.mean[1]:h.mean[0];
+  let sc=(YJ.STANCE_SCORE[Gm.b.mean[2]]||0)*0.3+Gm.ty.score*0.5;
+  s+=`<p class="small"><b>本命卦 ${Gm.b.z.n}${Gm.r.moving.length?` 之 ${Gm.z.z.n}`:''}：</b>${mean(Gm.b)}<br>${tyLine(Gm.ty)}<br><b>${n==='財運'?'財運解讀':'白話'}（之卦 ${Gm.z.z.n}，事情的走向）：</b>${mean(Gm.z)}</p>`;
+  const one=(y)=>{const r=yearGua(y);const b=YJ.hex(r.code),z=YJ.hex(YJ.flip(r.code,r.moving)),ty=YJ.tiyong(r.code,r.dong);const v=(YJ.STANCE_SCORE[b.mean[2]]||0)*0.5+ty.score*0.8+(YJ.STANCE_SCORE[z.mean[2]]||0)*0.3;return {y,r,b,z,ty,v}};
+  if(scope.type==='scan'){const Y=new Date().getFullYear(),rows=[];for(let y=Y;y<Y+12;y++)rows.push(one(y));
+    const top=[...rows].sort((a,b)=>b.v-a.v).slice(0,3),low=[...rows].sort((a,b)=>a.v-b.v).slice(0,2);
+    s+=`<p><b>答：</b>依流年卦，未來 12 年較順的是 <b>${top.map(r=>r.y).join('、')}</b> 年，較需保守的是 <b>${low.map(r=>r.y).join('、')}</b> 年。</p><table class="small"><tr><th>年</th><th>流年卦</th><th>評等</th><th>卦意</th></tr>${rows.map(r=>{const [g,c]=GR(r.v);return `<tr${top.includes(r)?' class="flag"':''}><td>${r.y}</td><td>${r.b.z.n}→${r.z.z.n}</td><td style="color:${c};font-weight:700">${g}</td><td>${esc(mean(r.b).slice(0,40))}…</td></tr>`}).join('')}</table>`;
+    return {html:s,sc:top[0].v};}
+  if(scope.type!=='natal'){const y=+scopeDate(scope).slice(0,4);const o=one(y);sc=o.v;
+    const zx=YJ.zhuxi(o.r.code,o.r.moving);
+    s+=`<p><b>答：</b>${y} 年流年卦「${o.b.z.n}」之「${o.z.z.n}」，屬${badge(o.v)}。${ADV[GR(o.v)[0]]}</p><p class="small">${o.r.basis}，第${o.r.dong+1}爻動。<br>卦辭：${o.b.z.g}<br>${zx.texts.map(x=>`${x.who}卦・${x.p}：${x.c}`).join('<br>')}<br><b>${n==='財運'?'財運解讀':'白話'}：</b>${mean(o.b)}<br>${tyLine(o.ty)}<br><b>走向（之卦）：</b>${mean(o.z)}</p>${scope.type!=='year'?'<p class="small mute">易經這裡以「年」為單位；月、日的細節請看紫微流月流日或用占卜卜卦。</p>':''}`;
+  }else s+=`<p><b>答：</b>本命卦看「${n}」屬${badge(sc)}。${ADV[GR(sc)[0]]}</p>`;
+  return {html:s,sc};
+}
+
+// ================= 整合 =================
+function zwAnswer(q){if(!A)return {html:`<p class="mute">${NOHOUR?'時辰不詳，無法排紫微。':'請先排盤。'}</p>`,sc:null};const h=ASK.answer(q);const m=h.match(/>(大吉|吉|平|小凶|凶)</);const map={大吉:2,吉:1,平:0,小凶:-1,凶:-2};return {html:h,sc:m?map[m[1]]:0}}
+function allAnswer(q){
+  const parts=[['紫微斗數',zwAnswer(q),1],['八字',bzAnswer(q),0.8],['星座',wsAnswer(q),0.5],['易經',yjAnswer(q),0.4]].filter(x=>x[1].sc!=null&&!(x[0]==='易經'&&!A));
+  const W=parts.reduce((a,x)=>a+x[2],0);const tot=parts.reduce((a,x)=>a+Math.max(-2.5,Math.min(2.5,x[1].sc))*x[2],0)/(W||1);
+  const {topic,scope}=P(q);const g=GR(tot)[0];
+  const agree=parts.map(x=>[x[0],GR(x[1].sc)[0]]);
+  const pos=agree.filter(a=>['大吉','吉'].includes(a[1])).map(a=>a[0]),neg=agree.filter(a=>['小凶','凶'].includes(a[1])).map(a=>a[0]);
+  let s=`<div class="hit" style="border-color:var(--acc)"><p><b>綜合答覆：</b>問「${topic.n}」・${scopeLabel(scope)}，${parts.length} 套方法合看屬${badge(tot)}。${ADV[g]}</p>
+  <p class="small">${agree.map(a=>`${a[0]}：${a[1]}`).join('｜')}</p>
+  <p class="small">${pos.length&&neg.length?`${pos.join('、')}偏好，${neg.join('、')}偏弱：代表機會與阻力並存，${scope.type==='natal'?'先天上有優勢也有罩門':'時機上可以做，但要特別注意風險'}。`:pos.length>=parts.length-1?'多數方法都看好，可信度較高。':neg.length>=parts.length-1?'多數方法都不看好，宜保守。':'各方法看法分散，屬於平常的狀態，照計畫進行即可。'}</p></div>`;
+  s+=parts.map(([nm,r],i)=>`<details${i===0?' open':''}><summary><b>${nm}怎麼看</b> ${badge(r.sc)}</summary>${r.html}</details>`).join('');
+  s+=`<p class="small mute">權重：紫微 1、八字 0.8、星座 0.5、易經 0.4。全部為規則推算的傳統命理參考，不是確定的預言。</p>`;
+  return s;
+}
+
+// ================= 完整命書 =================
+function spText(star,pal){const t=SP[star];return t?t[PALACE_ORDER.indexOf(pal)]||'':''}
+function palText(name){const p=A.palaces.find(x=>x.name===name);if(!p)return '';let ms=p.majorStars,borrow='';
+  if(!ms.length){const o=A.palaces[(A.palaces.indexOf(p)+6)%12];ms=o.majorStars;borrow='（本宮無主星，借對宮）'}
+  const good=p.minorStars.filter(s=>['左輔','右弼','文昌','文曲','天魁','天鉞','祿存'].includes(s.name)).map(s=>s.name),bad=p.minorStars.filter(s=>['擎羊','陀羅','火星','鈴星','地空','地劫'].includes(s.name)).map(s=>s.name);
+  const mu=[...p.majorStars,...p.minorStars].filter(s=>s.mutagen).map(s=>s.name+'化'+s.mutagen);
+  return `<p class="small"><b>${name.endsWith('宮')?name:name+'宮'}（${p.heavenlyStem}${p.earthlyBranch}）：${ms.map(s=>s.name+(s.brightness||'')).join('、')||'無主星'}${borrow}</b>${mu.length?`，生年${mu.join('、')}`:''}${good.length?`，吉星${good.join('、')}`:''}${bad.length?`，煞星${bad.join('、')}`:''}。<br>${ms.map(s=>spText(s.name,name)).join('')}${good.length?`<br>${good.map(x=>MINOR_FX[x]?x+'：'+MINOR_FX[x]:'').filter(Boolean).join(' ')}`:''}${bad.length?`<br>${bad.map(x=>MINOR_FX[x]?x+'：'+MINOR_FX[x]:'').filter(Boolean).join(' ')}`:''}</p>`}
+function full(){
+  if(!BZ||!WS)return '<p class="mute">請先輸入生辰並按「排盤」。</p>';
+  const S=WEST.SIGNS,g=n=>WS.P.find(p=>p.n===n);const hasZ=!!A;const Y=new Date().getFullYear();
+  const sec=(t,b)=>`<h3>${t}</h3>${b}`;
+  let h=`<h2>完整命書</h2><p class="small mute">整合紫微斗數${hasZ?'':'（時辰不詳，略）'}、八字、西洋星盤${hasZ?'、易經本命卦':''}，依主題逐一說明。全部為離線規則推算，僅供參考。</p>`;
+  // 基本資料
+  h+=sec('一、基本資料',`<p class="small">${hasZ?`紫微：${A.gender}命，${A.fiveElementsClass}，命主${A.soul}、身主${A.body}，命宮${A.palaces.find(p=>p.name==='命宮').earthlyBranch}宮。<br>`:''}八字：${BZ.P.join('　')}（日主${BZ.dm}${BZ.dmw}，${BZ.strong?'身強':'身弱'}，${BZ.geju}，喜${BZ.xi.join('')}、忌${BZ.ji.join('')}）<br>星座：太陽${S[g('太陽').sign].n}、月亮${WS.moonAlt?NH.moonText(WS):S[g('月亮').sign].n}${WS.ascS!=null?'、上升'+S[WS.ascS].n:''}${hasZ?`<br>易經：本命卦${benmingGua().b.z.n}`:''}</p>`);
+  // 性格
+  let per='';
+  if(hasZ){per+=palText('命宮');const body=A.palaces.find(p=>p.isBodyPalace);if(body&&body.name!=='命宮')per+=`<p class="small"><b>身宮在${body.name}：</b>後天（約 30 歲後）的重心會轉到「${PALACE_DOMAIN[body.name]}」。</p>`;
+    try{const gj=GEJU.analyze(A).list;if(gj.length)per+=`<p class="small"><b>命中格局：</b>${gj.map(x=>`<b>${x.name}</b>${GEJU_DETAIL[x.name]?'：'+GEJU_DETAIL[x.name]:''}`).join('<br>')}</p>`}catch(e){}}
+  per+=`<p class="small"><b>八字日主${BZ.dm}：</b>${BAZI.DM[BZ.dm]}${BAZI.GEJU_DESC[BZ.geju]||''}</p>`;
+  per+=`<p class="small"><b>十神結構：</b>${BZ.ssList.slice(0,3).map(([k])=>k+'：'+BAZI.SS[k]).join('<br>')}</p>`;
+  per+=`<p class="small"><b>星座：</b>太陽${S[g('太陽').sign].n}——${S[g('太陽').sign].core}<br>月亮${WS.moonAlt?NH.moonText(WS):S[g('月亮').sign].n}——${S[g('月亮').sign].emo}${WS.ascS!=null?`<br>上升${S[WS.ascS].n}——${S[WS.ascS].out}`:''}</p>`;
+  if(hasZ){const Gm=benmingGua();per+=`<p class="small"><b>易經本命卦${Gm.b.z.n}：</b>${Gm.b.mean[0]}體卦${Gm.ty.ti.n}：${TRI_DESC[Gm.ty.ti.n]}。</p>`}
+  h+=sec('二、性格總論',per);
+  // 主題
+  const topic=(title,pals,q,extra)=>{let b='';if(hasZ)b+=pals.map(palText).join('');const cut=h=>h.replace(/<p><b>答：<\/b>[\s\S]*?<\/p>/,'').replace(/<p class="small mute">理解為：[\s\S]*?<\/p>/,'');b+=`<div class="small"><b>八字：</b>${cut(bzAnswer(q).html)}</div>`;b+=`<div class="small"><b>星盤：</b>${cut(wsAnswer(q).html)}</div>`;if(extra)b+=extra;return sec(title,b)};
+  h+=topic('三、事業',['官祿','遷移'],'事業適合什麼');
+  h+=topic('四、財運',['財帛','田宅'],'財運');
+  h+=topic('五、感情婚姻',['夫妻','福德'],'感情');
+  h+=topic('六、健康',['疾厄'],'健康','<p class="small mute">命理看的是體質傾向，身體狀況請以醫師檢查為準。</p>');
+  h+=topic('七、人際與家庭',['僕役','兄弟','父母','子女'],'人際');
+  // 運程
+  let run='';
+  if(hasZ){const rows=[];for(let i=0;i<12;i++){const p=A.palaces.find(x=>x.decadal&&x.decadal.range&&rows.length===i&&true);}
+    const by=BIRTH.y;const decs=[...A.palaces].sort((a,b)=>a.decadal.range[0]-b.decadal.range[0]).slice(0,9);
+    run+=`<table class="small"><tr><th>虛歲</th><th>約西元</th><th>大限宮</th><th>大限四化</th><th>重點</th></tr>${decs.map(p=>{const a0=p.decadal.range[0];const yy=by+a0-1;let mu='',note='';try{const hz=A.horoscope(`${yy+1}-7-1`,6);const m=hz.decadal.mutagen;const where=st=>{const q=A.palaces.find(x=>[...x.majorStars,...x.minorStars].some(s=>s.name===st));return q?q.name:'?'};mu=`祿${m[0]}→${where(m[0])} 忌${m[3]}→${where(m[3])}`;note=`祿入${where(m[0])}：${PALACE_DOMAIN[where(m[0])]||''}有收穫；忌入${where(m[3])}：${PALACE_DOMAIN[where(m[3])]||''}要留意`}catch(e){}
+      const cur=Y>=yy&&Y<yy+10;return `<tr${cur?' class="flag"':''}><td>${p.decadal.range.join('–')}</td><td>${yy}–${yy+9}</td><td>${p.name}</td><td>${mu}</td><td>${note}</td></tr>`}).join('')}</table>`}
+  run+=`<p class="small"><b>八字大運：</b></p><table class="small"><tr><th>大運</th><th>起運</th><th>天干</th><th>地支</th><th>評等</th></tr>${BZ.dayun.slice(0,8).map(d=>{const gw=GW[d.p[0]],zw=ZW[d.p[1]];const v=(BZ.xi.includes(gw)?1:BZ.ji.includes(gw)?-1:0)+(BZ.xi.includes(zw)?1:BZ.ji.includes(zw)?-1:0);const [gg,c]=GR(v*0.8);const cur=Y>=Math.floor(d.year)&&Y<Math.floor(d.year)+10;
+    return `<tr${cur?' class="flag"':''}><td>${d.p}</td><td>${Math.floor(d.age)}歲（${Math.floor(d.year)}）</td><td>${ssG(d.p[0])}・${BZ.xi.includes(gw)?'喜':BZ.ji.includes(gw)?'忌':'平'}</td><td>${ssZ(d.p[1])}・${BZ.xi.includes(zw)?'喜':BZ.ji.includes(zw)?'忌':'平'}</td><td style="color:${c};font-weight:700">${gg}</td></tr>`}).join('')}</table><p class="small mute">底色標示目前所在的大限、大運。</p>`;
+  h+=sec('八、人生運程',run);
+  // 近三年
+  let yrs='';
+  for(let y=Y;y<Y+3;y++){let t='';if(hasZ){try{const d=document.createElement('div');const x=LN.yearReport(y);d.innerHTML=typeof x==='string'?x:(x.html||'');const tx=d.innerText;const k=tx.indexOf('八、年度重點');t=k>=0?tx.slice(k+6,tx.indexOf('評等方法',k)).trim():''}catch(e){}}
+    const p=pillarsAt(`${y}-07-01`)[0];const gw=GW[p[0]],zw=ZW[p[1]];
+    yrs+=`<p class="small"><b>${y} 年（${p}）</b>：${t?esc(t)+'<br>':''}八字流年天干${p[0]}（${ssG(p[0])}，${BZ.xi.includes(gw)?'喜':BZ.ji.includes(gw)?'忌':'平'}）、地支${p[1]}（${ssZ(p[1])}，${BZ.xi.includes(zw)?'喜':BZ.ji.includes(zw)?'忌':'平'}）。</p>`}
+  h+=sec('九、近三年流年',yrs+`<p class="small mute">每一年的逐月細節，請看「紫微 → 流年詳批」。</p>`);
+  // 總結
+  const T=traitVectorsSafe();
+  h+=sec('十、總結與建議',`<p class="small">${T?`四套方法綜合，你最突出的特質是「${T[0]}」與「${T[1]}」，相對要補強的是「${T[2]}」。`:''}依八字喜用，生活與事業上多接觸「${BZ.xi.map(w=>BAZI.WX_ITEM[w].split('、').slice(0,3).join('、')).join('；')}」相關的人事物，有助於運勢。${BZ.ji.length?`忌神${BZ.ji.join('、')}過重的時期（流年、大運逢${BZ.ji.join('、')}），宜保守、守成。`:''}</p><p class="small">命盤說的是傾向與時機，不是定數。把命盤指出的長處放大、用規則與習慣框住弱點，比預測吉凶更重要。</p>`);
+  return h;
+}
+function traitVectorsSafe(){try{if(NOHOUR||!A)return null;const T=traitVectors();const comb={};TRAITS.forEach(k=>comb[k]=(T.zw[k]+T.bz[k]+T.ws[k]+T.yj[k])/4);const r=[...TRAITS].sort((a,b)=>comb[b]-comb[a]);return [r[0],r[1],r[6]]}catch(e){return null}}
+
+// ================= 介面 =================
+const EX={bazi:['我的財運如何？','今年事業運','哪一年容易結婚？','我的健康要注意什麼？','我適合什麼行業？'],west:['我的感情運','明年事業','哪一年財運最好？','下個月心情如何？'],yjm:['我的本命卦怎麼看財運？','今年流年卦','哪幾年比較順？'],int:['我的財運如何？','今年整體運勢','哪一年適合換工作？','明年感情','這個月健康']};
+const FN={bazi:bzAnswer,west:wsAnswer,yjm:yjAnswer};
+function box(id,title){const sec=$('tab-'+id);if(!sec||$('qa-'+id))return;const d=document.createElement('div');d.className='card';d.id='qa-'+id;
+  d.innerHTML=`<h2>${title}</h2><p class="small mute">輸入想問的事，可以加上時間（今天、下個月、今年、明年、2028 年、哪一年）。全部依規則推算，不會上傳。</p>
+  <div class="row"><input id="qaQ-${id}" maxlength="80" style="flex:1;min-width:200px" placeholder="例如：${EX[id][0]}"><button class="primary" id="qaGo-${id}">問</button></div>
+  <div class="row small" style="margin-top:6px">${EX[id].map(x=>`<button type="button" class="qaEx" data-id="${id}">${x}</button>`).join('')}</div><div id="qaOut-${id}" style="margin-top:10px"></div>`;
+  sec.appendChild(d);
+  const go=()=>safe(()=>{const q=$('qaQ-'+id).value.trim();if(!q){$('qaOut-'+id).innerHTML='<p class="small mute">請輸入問題。</p>';return}$('qaOut-'+id).innerHTML=id==='int'?allAnswer(q):FN[id](q).html},'qaOut-'+id);
+  $('qaGo-'+id).onclick=go;$('qaQ-'+id).onkeydown=e=>{if(e.key==='Enter')go()};
+  d.querySelectorAll('.qaEx').forEach(b=>b.onclick=()=>{$('qaQ-'+id).value=b.textContent;go()});
+}
+function init(){
+  box('bazi','問八字');box('west','問星盤');box('yjm','問易經');box('int','問整體命盤（四套合看）');
+  const sec=$('tab-int');if(sec&&!$('fullCard')){const d=document.createElement('div');d.className='card';d.id='fullCard';
+    d.innerHTML=`<h2>完整命書</h2><p class="small mute">把紫微、八字、星座、易經整合成一份從性格、事業、財運、感情、健康、人際到大運流年的完整解說。</p><div class="row"><button class="primary" id="fullGo">產生完整命書</button></div><div id="fullOut" style="margin-top:10px"></div>`;
+    sec.insertBefore(d,$('qa-int'));$('fullGo').onclick=()=>safe(()=>{$('fullOut').innerHTML=full()},'fullOut')}
+  const ra=renderAll;renderAll=function(){ra();['bazi','west','yjm','int'].forEach(id=>{const o=$('qaOut-'+id);if(o)o.innerHTML=''});const f=$('fullOut');if(f)f.innerHTML=''};
+}
+return {init,bzAnswer,wsAnswer,yjAnswer,allAnswer,full};
+})();
+QA.init();
+</script>
 <script>try{ZHAN.init()}catch(e){console.error(e)}try{HEPAN.init()}catch(e){console.error(e)}</script>
 <script>
 // 計數：只送「哪一頁／哪個功能被用了一次」，不含任何輸入內容；本機開檔（file://）時不計數。
@@ -2719,7 +2972,7 @@ NH.setup();
   }
   gc(location.pathname||'/','紫微・八字・星座・占卜',false);
   function onClick(id,name){var el=document.getElementById(id);if(el)el.addEventListener('click',function(){gc('use-'+name,name,true)})}
-  onClick('go','排盤');onClick('askGo','問命盤');onClick('tgo','塔羅');onClick('cGo','流日日曆');onClick('yjGo','易經卜卦');onClick('lnGo','流年詳批');onClick('lrGo','大六壬');onClick('qmGo','奇門遁甲');onClick('tyGo','太乙神數');onClick('hpGo','合盤');
+  onClick('go','排盤');onClick('askGo','問命盤');onClick('tgo','塔羅');onClick('cGo','流日日曆');onClick('yjGo','易經卜卦');onClick('lnGo','流年詳批');onClick('lrGo','大六壬');onClick('qmGo','奇門遁甲');onClick('tyGo','太乙神數');onClick('hpGo','合盤');onClick('fullGo','完整命書');['bazi','west','yjm','int'].forEach(function(k){onClick('qaGo-'+k,'問答-'+k)});
   window.__fbOK=1;
   document.addEventListener('zw-feedback',function(e){try{(e.detail||[]).slice(0,10).forEach(function(x){var k=String(x.k).replace(/[^a-z]/g,'').slice(0,6),v=Math.max(1,Math.min(5,parseInt(x.v,10)||0));gc('fb-'+k+'-'+v,'回饋 '+k+' '+v+'分',true)})}catch(err){}});
   document.querySelectorAll('.tabs button').forEach(function(b){b.addEventListener('click',function(){var t=b.dataset.tab||b.dataset.main;if(t&&!seen[t]){seen[t]=1;gc('tab-'+t,'分頁 '+b.textContent,true)}})});
