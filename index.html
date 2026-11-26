@@ -2957,6 +2957,192 @@ return {init,bzAnswer,wsAnswer,yjAnswer,allAnswer,full};
 })();
 QA.init();
 </script>
+<script>// ===== 命理圖卡：依主題推算 → 在瀏覽器內用 canvas 畫成 PNG（不連網、不上傳） =====
+const CARD=(function(){
+const GW={甲:'木',乙:'木',丙:'火',丁:'火',戊:'土',己:'土',庚:'金',辛:'金',壬:'水',癸:'水'};
+const ZW={子:'水',丑:'土',寅:'木',卯:'木',辰:'土',巳:'火',午:'火',未:'土',申:'金',酉:'金',戌:'土',亥:'水'};
+const MAIN={子:'癸',丑:'己',寅:'甲',卯:'乙',辰:'戊',巳:'丙',午:'丁',未:'己',申:'庚',酉:'辛',戌:'戊',亥:'壬'};
+const Z='子丑寅卯辰巳午未申酉戌亥',zi=z=>Z.indexOf(z);
+const HE=(a,b)=>(zi(a)+zi(b))%12===1,CHONG=(a,b)=>Math.abs(zi(a)-zi(b))===6;
+const BAD=['擎羊','陀羅','火星','鈴星','地空','地劫'],GOOD=['左輔','右弼','文昌','文曲','天魁','天鉞','祿存'];
+const OPP={命宮:'遷移',兄弟:'僕役',夫妻:'官祿',子女:'田宅',財帛:'福德',疾厄:'父母',遷移:'命宮',僕役:'兄弟',官祿:'夫妻',田宅:'子女',福德:'財帛',父母:'疾厄'};
+const MEET={命宮:'自己主動、氣場吸引，在日常生活中自然認識',兄弟:'兄弟姊妹或好友介紹',夫妻:'舊識、相處久了自然在一起',子女:'娛樂場合、學生晚輩圈、才藝課',財帛:'工作上的客戶、交易往來',疾厄:'運動健身、醫療相關場合',遷移:'外地、出差、旅行、搬家後的新環境',僕役:'朋友聚會、同事、社團',官祿:'職場、工作合作',田宅:'家附近、家人安排、親戚介紹',福德:'興趣嗜好、宗教或心靈活動',父母:'長輩、主管介紹，或相親'};
+const PARTNER={紫微:'有主見、愛面子、能力強的領導型',天機:'聰明、反應快、想法多，但容易猶豫',太陽:'熱情外向、樂於付出、重面子',武曲:'務實、重錢財、不擅浪漫的行動派',天同:'溫和、好相處、重享受，較被動',廉貞:'個性鮮明、有魅力，感情濃烈',天府:'穩重、會理財、顧家',太陰:'溫柔細膩、重感受、愛家',貪狼:'多才多藝、社交好、桃花多',巨門:'口才好但愛計較，相處要多溝通',天相:'斯文體貼、講公平、重形象',天梁:'成熟穩重、愛照顧人、像長輩',七殺:'個性強、有衝勁、獨立',破軍:'敢衝敢變、不按牌理，關係變化大'};
+const DOM=typeof PALACE_DOMAIN!=='undefined'?PALACE_DOMAIN:{};
+const male=()=>(BIRTH&&BIRTH.gender||(A&&A.gender)||'男')==='男';
+const ssOf=ch=>BAZI.shishen(BZ.dm,ch);
+function yearP(y,m,d){return BAZI.compute({y,m:m||7,d:d||1,hh:12,mm:0,tz:8,dst:false,gender:'男'}).P}
+const pal=n=>A.palaces.find(p=>p.name===n);
+const starPal=n=>A.palaces.find(p=>[...p.majorStars,...p.minorStars,...p.adjectiveStars].some(s=>s.name===n));
+const pidx=p=>A.palaces.indexOf(p);
+
+const TOPICS={
+  love:{n:'姻緣時機',pal:'夫妻',alt:'福德',ss:()=>male()?['正財','偏財']:['正官','七殺'],star:()=>male()?'妻星（財星）':'夫星（官殺）',short:()=>male()?'妻星':'夫星'},
+  money:{n:'財運時機',pal:'財帛',alt:'田宅',ss:()=>['正財','偏財'],star:()=>'財星',short:()=>'財星'},
+  career:{n:'事業時機',pal:'官祿',alt:'遷移',ss:()=>['正官','七殺','食神','傷官'],star:()=>'官殺、食傷',short:()=>'事業星'},
+  decade:{n:'未來十年流年',pal:null}
+};
+
+// ---------- 逐年推算 ----------
+function zwYear(T,y,key){const out={sc:0,r:[],flag:''};if(!A)return out;
+  const h=A.horoscope(`${y}-7-1`,6),yy=h.yearly,names=yy.palaceNames,K='祿權科忌';
+  const W={祿:2,權:1.2,科:1,忌:-1.2};
+  yy.mutagen.forEach((s,i)=>{const p=starPal(s);if(!p)return;const k=K[i],fn=names[pidx(p)];
+    if(p.name===T.pal){out.sc+=W[k];out.r.push(`${s}化${k}入本命${T.pal}`);if(k==='忌')out.flag='動'}
+    else if(p.name===T.alt){out.sc+=W[k]*0.5;if(k!=='科')out.r.push(`${s}化${k}入${T.alt}`)}
+    else if(fn===T.pal){out.sc+=W[k]*0.6;out.r.push(`${s}化${k}入流年${T.pal}`)}
+    if(k==='忌'&&p.name===OPP[T.pal]){out.sc-=0.8;out.r.push(`${s}化忌沖${T.pal}`)}});
+  const mi=yy.index;if(A.palaces[mi].name===T.pal){out.sc+=1;out.r.push(`流年命宮走到${T.pal}`)}
+  const dp=A.palaces[h.decadal.index];if(dp.name===T.pal)out.sc+=0.4;
+  const dj=starPal(h.decadal.mutagen[3]);if(dj&&dj.name===T.pal){out.sc-=0.4}
+  if(key==='love'){let pk=0;yy.stars.forEach((arr,i)=>arr.forEach(s=>{if(!/流鸞|流喜/.test(s.name))return;const nn=A.palaces[i].name,fn=names[i];
+      if(['命宮','夫妻'].includes(nn)||['命宮','夫妻'].includes(fn)){pk=Math.max(pk,1.5);out.r.push(`${s.name==='流鸞'?'流年紅鸞':'流年天喜'}入${['命宮','夫妻'].includes(nn)?'本命'+nn:'流年'+fn}`)}}));
+    const hl=starPal('紅鸞'),tx=starPal('天喜');if((hl&&pidx(hl)===mi)||(tx&&pidx(tx)===mi)){pk+=0.8;out.r.push('流年命宮坐本命'+(hl&&pidx(hl)===mi?'紅鸞':'天喜'))}
+    out.sc+=pk}
+  return out}
+function bzYear(T,y,key){const out={sc:0,r:[],flag:''};if(!BZ)return out;
+  const p=yearP(y)[0],g=p[0],z=p[1],SS=T.ss(),gs=ssOf(g),zs=ssOf(MAIN[z]);
+  const xj=w=>BZ.xi.includes(w)?1:BZ.ji.includes(w)?-1:0;
+  out.sc+=0.35*(xj(GW[g])+xj(ZW[z]));
+  if(SS.includes(gs)){out.sc+=gs.startsWith('正')||gs==='食神'?1.3:1;out.r.push(`${gs}年・${T.short()}透出`)}
+  else if(SS.includes(zs)){out.sc+=0.8;out.r.push(`地支${z}藏${zs}`)}
+  const dz=BZ.P[2][1];
+  if(key==='love'){if(HE(z,dz)){out.sc+=0.8;out.r.push(`${z}${dz}合夫妻宮`)}if(CHONG(z,dz)){out.sc+=0.3;out.flag='動';out.r.push(`${z}沖${dz}（夫妻宮變動）`)}}
+  if(!out.r.length)out.r.push(`${p}・${xj(GW[g])+xj(ZW[z])>0?'喜用':xj(GW[g])+xj(ZW[z])<0?'忌神':'平'}`);
+  return out}
+function scan(key,n){const T=TOPICS[key],Y=new Date().getFullYear(),rows=[];
+  for(let y=Y;y<Y+n;y++){const a=zwYear(T,y,key),b=bzYear(T,y,key);const tot=(A?a.sc:0)+b.sc*(A?0.8:1.4);
+    rows.push({y,gz:yearP(y)[0],zw:a,bz:b,tot,flag:a.flag||b.flag})}
+  return rows}
+const lvl=t=>t>=3?3:t>=2?2:t>=1.1?1:t<=-1.2?-1:0;
+const stars=l=>l===3?'★★★':l===2?'★★':l===1?'★':l===-1?'⚠':'—';
+function bestMonths(key,y){const T=TOPICS[key],SS=T.ss(),ms=[];
+  const now=new Date();for(let m=(y===now.getFullYear()?now.getMonth()+1:1);m<=12;m++){const p=yearP(y,m,15)[1];if(SS.includes(ssOf(p[0]))||SS.includes(ssOf(MAIN[p[1]])))ms.push(m)}
+  if(!ms.length)return '';const runs=[];ms.forEach(m=>{const r=runs[runs.length-1];if(r&&r[1]===m-1)r[1]=m;else runs.push([m,m])});
+  runs.sort((a,b)=>(b[1]-b[0])-(a[1]-a[0]));const r=runs[0];return r[0]===r[1]?`${r[0]} 月`:`${r[0]}–${r[1]} 月`}
+
+// ---------- 本命 ----------
+function palSummary(n){const p=pal(n);let ms=p.majorStars,bor='';if(!ms.length){ms=pal(OPP[n]).majorStars;bor='（空宮借對宮）'}
+  const mu=[...p.majorStars,...p.minorStars].filter(s=>s.mutagen).map(s=>s.name+'化'+s.mutagen);
+  const bad=p.minorStars.filter(s=>BAD.includes(s.name)).map(s=>s.name),good=p.minorStars.filter(s=>GOOD.includes(s.name)).map(s=>s.name);
+  const oj=[...pal(OPP[n]).majorStars,...pal(OPP[n]).minorStars].filter(s=>s.mutagen==='忌').map(s=>s.name);
+  return {p,ms,bor,mu,bad,good,oj,txt:`${n}宮${ms.map(s=>s.name+(s.brightness||'')).join('')||'無主星'}${bor}${mu.length?'・'+mu.join('、'):''}${good.length?'・'+good.join('、'):''}${bad.length?'・'+bad.join('、'):''}${oj.length?`・對宮${oj.join('')}化忌沖入`:''}`}}
+function starCount(SS){let n=0,t=0;BZ.P.forEach((p,i)=>{if(i===2)return;if(p[0]!=='？'&&SS.includes(ssOf(p[0])))t++;(BZ.cang[i]||[]).forEach(c=>{if(SS.includes(c.ss))n++})});return {t,n}}
+
+// ---------- 組卡 ----------
+function header(T){const sub=[];const show=$('cardBirth')&&$('cardBirth').checked;
+  if(show&&BIRTH)sub.push(`${BIRTH.y}/${BIRTH.m}/${BIRTH.d}${BIRTH.noHour?' 時辰不詳':''}・${male()?'男':'女'}命`);else sub.push(`${male()?'男':'女'}命`);
+  if(show&&BZ)sub.push('八字 '+BZ.P.join(' '));
+  if(A){const m=pal('命宮');sub.push(`命宮${m.majorStars.map(s=>s.name).join('')||'空宮'}`)}
+  return {t:'title',text:T.n,sub:sub.join('｜')}}
+function topicCard(key){const T=TOPICS[key],rows=scan(key,12),blocks=[header(T)];
+  const now=new Date().getFullYear();
+  const good=rows.filter(r=>lvl(r.tot)>=2).sort((a,b)=>b.tot-a.tot),warn=rows.filter(r=>lvl(r.tot)===-1);
+  const top=[...good].sort((a,b)=>(b.tot-0.15*(b.y-now))-(a.tot-0.15*(a.y-now))).slice(0,2).map(r=>r.y).sort();
+  const lateYr=new Date().getMonth()>=9;const first=rows.find(r=>(key==='love'||!(lateYr&&r.y===now))&&r.tot>=1.5||(key==='love'&&r.tot>0.5&&r.bz.r.some(x=>x.includes('透出'))));
+  const late=first&&first.y===now&&new Date().getMonth()>=9,fy=late?now+1:first&&first.y,bm=first?bestMonths(key,fy):'';
+  const big=key==='love'?(first?`對象出現：${late?`今年底 → ${now+1} 年`:first.y===now?'今年':first.y+' 年'}${bm?`（${late?now+1+' 年 ':''}約 ${bm} 最旺）`:''}`:'未來幾年緣分訊號偏弱，宜主動經營'):
+    (top.length?`最旺：${top.join('、')} 年`:'未來十二年起伏平穩，沒有特別突出的年份');
+  const l1=[];
+  if(key==='love'&&top.length)l1.push(['最可能定下來：',top.join('、')+' 年']);
+  if(key!=='love'&&first)l1.push(['最近的好時機：',`${first.y} 年${bestMonths(key,first.y)?`（約 ${bestMonths(key,first.y)}）`:''}`]);
+  if(warn.length)l1.push(['宜保守：',warn.slice(0,3).map(r=>r.y).join('、')+' 年']);
+  const fl=rows.filter(r=>r.flag==='動'&&r.tot>0).slice(0,2);if(fl.length)l1.push(['變動／試煉：',fl.map(r=>r.y).join('、')+' 年，事情會發生，但伴隨磨合']);
+  blocks.push({t:'sec',title:'❶ 結論',kids:[{t:'big',text:big},{t:'list',items:l1}]});
+  // 時間線：挑 5 個重點年（依時間排序）
+  const pick=[...rows].filter(r=>lvl(r.tot)!==0).sort((a,b)=>Math.abs(b.tot)-Math.abs(a.tot)).slice(0,5).sort((a,b)=>a.y-b.y);
+  if(pick.length)blocks.push({t:'sec',title:'❷ 時間線',kids:[{t:'timeline',items:pick.map(r=>({y:r.y+(lvl(r.tot)>=2?' ★':lvl(r.tot)===-1?' ⚠':''),l:lvl(r.tot),lines:[(A&&r.zw.r[0])||r.bz.r[0],lvl(r.tot)===-1?'宜保守':lvl(r.tot)===3?'最旺':lvl(r.tot)===2?'有利':'有訊號']}))}]});
+  blocks.push({t:'sec',title:'❸ 逐年訊號',kids:[{t:'table',head:A?['年份','紫微','八字','評等']:['年份','八字','評等'],w:A?[0.16,0.42,0.28,0.14]:[0.2,0.6,0.2],
+    rows:rows.map(r=>A?[`${r.y} ${r.gz}`,r.zw.r.slice(0,2).join('、')||'—',r.bz.r[0],stars(lvl(r.tot))]:[`${r.y} ${r.gz}`,r.bz.r.join('、'),stars(lvl(r.tot))]),hi:rows.map(r=>lvl(r.tot)>=2?1:lvl(r.tot)===-1?-1:0)}]});
+  // 本命
+  const nat=[];const SS=T.ss(),c=starCount(SS);
+  if(A){const s=palSummary(T.pal);nat.push(['本命：',s.txt]);
+    if(key==='love'){const hl=starPal('紅鸞'),tx=starPal('天喜');const src=[];if(hl)src.push(['紅鸞在'+hl.name+'：',MEET[hl.name]]);if(tx&&(!hl||tx.name!==hl.name))src.push(['天喜在'+tx.name+'：',MEET[tx.name]]);
+      const tp=s.ms.map(x=>PARTNER[x.name]).filter(Boolean);if(tp.length)src.push(['對象類型：',tp.join('；')]);
+      if(s.good.includes('左輔')||s.good.includes('右弼'))src.push(['左輔右弼：','對方是可靠的幫手型，常先合作再生感情']);
+      blocks.push({t:'sec',title:'❹ 對象從哪裡來・什麼樣的人',kids:[{t:'list',items:src}]})}}
+  const dz=BZ.P[2][1];
+  const sEl=[...new Set(SS.map(x=>GW['甲乙丙丁戊己庚辛壬癸'.split('').find(g=>ssOf(g)===x)]))];const sXi=sEl.some(w=>BZ.xi.includes(w)),sJi=sEl.every(w=>BZ.ji.includes(w));
+  nat.push([`八字${T.star()}：`,(c.t?`天干透 ${c.t} 個${c.n?`、地支藏 ${c.n} 個`:''}`:c.n?`只藏在地支（${c.n} 個），要等流年透出才明顯`:'原局沒有，要靠大運、流年補上')+`；屬${sEl.join('')}，${sXi?'是喜用，來了容易成形':sJi?'是忌神，來時伴隨壓力，宜量力':'力量中性'}`]);
+  if(key==='love')nat.push(['夫妻宮（日支）：',`${dz}，${ssOf(MAIN[dz])}${['傷官','七殺','劫財'].includes(ssOf(MAIN[dz]))?'：感情中容易起摩擦，要多包容':''}`]);
+  nat.push(['身強弱：',`日主${BZ.dm}${BZ.dmw}${BZ.strong?'身強，擔得起財官，機會來時可以把握':'身弱，機會來時要量力而為，先穩再求進'}`]);
+  if(A){const s=palSummary(T.pal);if(s.bad.some(x=>x==='地空'||x==='地劫'))nat.push(['提醒：','空劫同宮，容易來得快去得快，宜穩健保守']);if(s.oj.length||s.mu.some(x=>x.endsWith('忌')))nat.push(['提醒：','本命有化忌牽動，關鍵在耐心與溝通，不宜衝動決定'])}
+  blocks.push({t:'sec',title:key==='love'?'❺ 本命提醒':'❹ 本命底子',kids:[{t:'list',items:nat}]});
+  return blocks}
+function decadeCard(){const T=TOPICS.decade,blocks=[header(T)],Y=new Date().getFullYear(),rows=[];
+  const xj=w=>BZ.xi.includes(w)?1:BZ.ji.includes(w)?-1:0;
+  for(let y=Y;y<Y+10;y++){const p=yearP(y)[0];let lu='',ji='',sc=0.5*(xj(GW[p[0]])+xj(ZW[p[1]]));
+    if(A){const yy=A.horoscope(`${y}-7-1`,6).yearly;const pl=starPal(yy.mutagen[0]),pj=starPal(yy.mutagen[3]);
+      lu=pl?`${yy.mutagen[0]}祿入${pl.name}：${(DOM[pl.name]||'').split('、')[0]}有收穫`:'';ji=pj?`${yy.mutagen[3]}忌入${pj.name}：${(DOM[pj.name]||'').split('、')[0]}要留意`:'';
+      if(pl&&['命宮','財帛','官祿','田宅'].includes(pl.name))sc+=0.8;if(pj&&['命宮','財帛','官祿','疾厄'].includes(pj.name))sc-=0.8}
+    rows.push({y,p,lu,ji,sc,bz:`${ssOf(p[0])}・${xj(GW[p[0]])>0?'喜':xj(GW[p[0]])<0?'忌':'平'}`})}
+  const g=s=>s>=1?'吉':s>=0.3?'小吉':s>-0.3?'平':s>-1?'小心':'保守';
+  const best=[...rows].sort((a,b)=>b.sc-a.sc).slice(0,2).map(r=>r.y).sort(),worst=[...rows].sort((a,b)=>a.sc-b.sc).slice(0,2).map(r=>r.y).sort();
+  blocks.push({t:'sec',title:'❶ 結論',kids:[{t:'big',text:`衝刺年：${best.join('、')}`},{t:'list',items:[['守成年：',worst.join('、')],['目前大運：',BZ.dayun.filter(d=>Y>=Math.floor(d.year)).map(d=>d.p+'（'+Math.floor(d.year)+' 起）').pop()||'—']]}]});
+  blocks.push({t:'sec',title:'❷ 逐年重點',kids:[{t:'table',head:A?['年份','好的一面','要留意','八字','評等']:['年份','八字','評等'],w:A?[0.14,0.31,0.31,0.14,0.1]:[0.3,0.4,0.3],
+    rows:rows.map(r=>A?[`${r.y} ${r.p}`,r.lu,r.ji,r.bz,g(r.sc)]:[`${r.y} ${r.p}`,r.bz,g(r.sc)]),hi:rows.map(r=>r.sc>=1?1:r.sc<=-1?-1:0)}]});
+  return blocks}
+function qaCard(q){const T={n:'問：'+q.slice(0,30)};const blocks=[header(T)];const d=document.createElement('div');d.innerHTML=QA.allAnswer(q);
+  const ps=[...d.querySelectorAll('.hit p')].map(p=>p.innerText.replace(/\s+/g,' ').trim());
+  const head=(ps[0]||'').replace(/^綜合答覆：/,'');const gm=head.match(/屬\s*(大吉|吉|平|小凶|凶)/);
+  const parts=[...d.querySelectorAll('details')].map(x=>{const s=x.querySelector('summary').innerText.replace(/怎麼看/,'').replace(/\s+/g,' ').trim();
+    const body=[...x.querySelectorAll('p')].map(p=>p.innerText.replace(/\s+/g,' ').trim()).filter(t=>t&&!/^理解為/.test(t)).slice(0,2).join(' ').replace(/^答：/,'');
+    return [s+'：',body.slice(0,120)+(body.length>120?'…':'')]});
+  blocks.push({t:'sec',title:'❶ 綜合答覆',kids:[{t:'big',text:gm?`四套合看：${gm[1]}`:'綜合答覆'},{t:'para',text:head.replace(/，\d 套方法合看屬\s*(大吉|吉|平|小凶|凶)。?/,'。')},...(ps[2]?[{t:'para',text:ps[2]}]:[])]});
+  blocks.push({t:'sec',title:'❷ 各系統怎麼看',kids:[{t:'list',items:parts}]});
+  return blocks}
+
+// ---------- canvas 繪製 ----------
+const FONT='"PingFang TC","Noto Sans TC","Noto Sans CJK TC","Microsoft JhengHei",sans-serif';
+const C={bg:'#f6f1e7',card:'#ffffff',acc:'#8a2c2c',red:'#b23a3a',txt:'#2b2420',mute:'#6b5d50',hi:'#fff4e5',warn:'#eeeeee'};
+function wrap(ctx,text,w){const out=[];let line='';for(const ch of String(text)){if(ch==='\n'){out.push(line);line='';continue}const t=line+ch;if(ctx.measureText(t).width>w&&line&&!'，。、）」』：；！？…%'.includes(ch)){out.push(line);line=ch}else line=t}if(line)out.push(line);return out.length?out:['']}
+function render(blocks){const W=1080,PAD=48,IN=30;const cv=document.createElement('canvas');const ctx=cv.getContext('2d');
+  const ops=[];let y=PAD;const f=(px,b)=>`${b?'700 ':''}${px}px ${FONT}`;
+  const text=(t,x,yy,px,col,b,align)=>ops.push(c=>{c.font=f(px,b);c.fillStyle=col;c.textAlign=align||'left';c.textBaseline='top';c.fillText(t,x,yy)});
+  const rect=(x,yy,w,h,col,r)=>ops.push(c=>{c.fillStyle=col;c.beginPath();c.roundRect?c.roundRect(x,yy,w,h,r||0):c.rect(x,yy,w,h);c.fill()});
+  for(const b of blocks){
+    if(b.t==='title'){text(b.text,PAD,y,52,C.acc,1);y+=72;ctx.font=f(24);wrap(ctx,b.sub,W-2*PAD).forEach(l=>{text(l,PAD,y,24,C.mute);y+=34});y+=18;continue}
+    if(b.t==='sec'){const top=y,iw=W-2*PAD-2*IN,x0=PAD+IN;const start=ops.length;y+=IN;text(b.title,x0,y,32,C.acc,1);y+=50;
+      for(const k of b.kids){
+        if(k.t==='big'){ctx.font=f(36,1);wrap(ctx,k.text,iw).forEach(l=>{text(l,x0,y,36,C.red,1);y+=50});y+=6}
+        if(k.t==='para'){ctx.font=f(25);wrap(ctx,k.text,iw).forEach(l=>{text(l,x0,y,25,C.txt);y+=38});y+=4}
+        if(k.t==='list')for(const [h,t] of k.items){ctx.font=f(25,1);const hw=ctx.measureText(h).width;ctx.font=f(25);
+          const first=wrap(ctx,t,iw-28-hw);const rest=first.length>1?wrap(ctx,first.slice(1).join(''),iw-28):[];
+          text('•',x0,y,25,C.acc,1);text(h,x0+28,y,25,C.txt,1);text(first[0],x0+28+hw,y,25,C.txt);y+=38;rest.forEach(l=>{text(l,x0+28,y,25,C.txt);y+=38});y+=4}
+        if(k.t==='timeline'){const n=k.items.length,gap=12,bw=(iw-gap*(n-1))/n;let h=0;ctx.font=f(21);
+          const L=k.items.map(it=>it.lines.map(l=>wrap(ctx,l,bw-20)).flat().slice(0,4));h=Math.max(...L.map(l=>l.length))*30+64;
+          const pal={3:['#c75b4a','#fff'],2:['#d98b72','#fff'],1:['#f3e0d6',C.txt],0:['#f3e0d6',C.txt],'-1':['#dddddd',C.txt]};
+          k.items.forEach((it,i)=>{const x=x0+i*(bw+gap),[bg,fg]=pal[it.l];rect(x,y,bw,h,bg,14);text(String(it.y),x+bw/2,y+14,26,fg,1,'center');L[i].forEach((l,j)=>text(l,x+bw/2,y+54+j*30,21,fg,0,'center'))});y+=h+10}
+        if(k.t==='table'){const cw=k.w.map(v=>v*iw);ctx.font=f(22,1);const hh=46;rect(x0,y,iw,hh,C.acc,8);let x=x0;k.head.forEach((t,i)=>{text(t,x+10,y+11,22,'#fff',1);x+=cw[i]});y+=hh;
+          k.rows.forEach((r,ri)=>{ctx.font=f(21);const cells=r.map((t,i)=>wrap(ctx,t,cw[i]-20));const rh=Math.max(...cells.map(c=>c.length))*30+16;
+            if(k.hi[ri])rect(x0,y,iw,rh,k.hi[ri]>0?C.hi:C.warn,0);let x=x0;cells.forEach((ls,i)=>{ls.forEach((l,j)=>text(l,x+10,y+8+j*30,21,k.hi[ri]<0?'#777':C.txt,i===0||i===r.length-1));x+=cw[i]});
+            ops.push(c=>{c.fillStyle='#eee';c.fillRect(x0,y+rh-1,iw,1)});y+=rh})}
+      }
+      y+=IN-6;const h=y-top;ops.splice(start,0,c=>{c.fillStyle='rgba(0,0,0,.06)';c.beginPath();c.roundRect?c.roundRect(PAD,top+2,W-2*PAD,h,20):c.rect(PAD,top+2,W-2*PAD,h);c.fill();c.fillStyle=C.card;c.beginPath();c.roundRect?c.roundRect(PAD,top,W-2*PAD,h,20):c.rect(PAD,top,W-2*PAD,h);c.fill()});y+=22}
+  }
+  text('紫微斗數＋八字規則推算・僅供參考，不宜作為重大決定依據',W/2,y,20,C.mute,0,'center');y+=40;
+  cv.width=W;cv.height=y;const c=cv.getContext('2d');c.fillStyle=C.bg;c.fillRect(0,0,W,y);ops.forEach(o=>o(c));return cv}
+
+// ---------- 介面 ----------
+function make(){const k=$('cardTopic').value;if(!BZ){$('cardOut').innerHTML='<p class="small mute">請先輸入生辰並按「排盤」。</p>';return}
+  let blocks;if(k==='qa'){const q=$('cardQ').value.trim();if(!q){$('cardOut').innerHTML='<p class="small mute">請輸入問題。</p>';return}blocks=qaCard(q)}else if(k==='decade')blocks=decadeCard();else blocks=topicCard(k);
+  const cv=render(blocks);const url=cv.toDataURL('image/png');const name=`命理圖卡_${(k==='qa'?'問答':TOPICS[k].n)}.png`;
+  $('cardOut').innerHTML=`<div class="row" style="margin-bottom:8px"><a class="primary" id="cardDl" download="${name}" href="${url}" style="text-decoration:none;padding:6px 14px;border-radius:8px">下載圖片</a>${navigator.canShare?'<button type="button" id="cardShare">分享</button>':''}<span class="small mute">手機也可以長按圖片儲存</span></div><img id="cardImg" alt="命理圖卡" style="width:100%;max-width:540px;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,.15)">`;
+  $('cardImg').src=url;
+  const sb=$('cardShare');if(sb)sb.onclick=()=>cv.toBlob(b=>{const file=new File([b],name,{type:'image/png'});if(navigator.canShare({files:[file]}))navigator.share({files:[file]}).catch(()=>{})})}
+function init(){const sec=$('tab-int');if(!sec||$('cardBox'))return;const d=document.createElement('div');d.className='card';d.id='cardBox';
+  d.innerHTML=`<h2>命理圖卡</h2><p class="small mute">選一個主題，把紫微＋八字的推算整理成一張圖，可以下載或分享。圖片在你的瀏覽器裡產生，不會上傳。</p>
+  <div class="row"><select id="cardTopic"><option value="love">姻緣時機（對象何時出現、哪年結婚）</option><option value="money">財運時機</option><option value="career">事業時機</option><option value="decade">未來十年流年</option><option value="qa">自己問一個問題</option></select>
+  <input id="cardQ" maxlength="60" placeholder="例如：明年適合換工作嗎？" style="flex:1;min-width:180px;display:none"><button class="primary" id="cardGo">產生圖卡</button></div>
+  <label class="small" style="display:block;margin-top:6px"><input type="checkbox" id="cardBirth"> 圖上顯示生日與八字（分享給別人前請注意隱私）</label><div id="cardOut" style="margin-top:10px"></div>`;
+  const ref=$('fullCard');sec.insertBefore(d,ref||sec.firstChild.nextSibling);
+  $('cardTopic').onchange=()=>{$('cardQ').style.display=$('cardTopic').value==='qa'?'':'none'};
+  $('cardGo').onclick=()=>safe(make,'cardOut');
+  const ra=renderAll;renderAll=function(){ra();const o=$('cardOut');if(o)o.innerHTML=''};}
+return {init,scan,topicCard,decadeCard,render};
+})();
+CARD.init();
+</script>
 <script>try{ZHAN.init()}catch(e){console.error(e)}try{HEPAN.init()}catch(e){console.error(e)}</script>
 <script>
 // 計數：只送「哪一頁／哪個功能被用了一次」，不含任何輸入內容；本機開檔（file://）時不計數。
@@ -2972,7 +3158,7 @@ QA.init();
   }
   gc(location.pathname||'/','紫微・八字・星座・占卜',false);
   function onClick(id,name){var el=document.getElementById(id);if(el)el.addEventListener('click',function(){gc('use-'+name,name,true)})}
-  onClick('go','排盤');onClick('askGo','問命盤');onClick('tgo','塔羅');onClick('cGo','流日日曆');onClick('yjGo','易經卜卦');onClick('lnGo','流年詳批');onClick('lrGo','大六壬');onClick('qmGo','奇門遁甲');onClick('tyGo','太乙神數');onClick('hpGo','合盤');onClick('fullGo','完整命書');['bazi','west','yjm','int'].forEach(function(k){onClick('qaGo-'+k,'問答-'+k)});
+  onClick('go','排盤');onClick('askGo','問命盤');onClick('tgo','塔羅');onClick('cGo','流日日曆');onClick('yjGo','易經卜卦');onClick('lnGo','流年詳批');onClick('lrGo','大六壬');onClick('qmGo','奇門遁甲');onClick('tyGo','太乙神數');onClick('hpGo','合盤');onClick('fullGo','完整命書');onClick('cardGo','命理圖卡');['bazi','west','yjm','int'].forEach(function(k){onClick('qaGo-'+k,'問答-'+k)});
   window.__fbOK=1;
   document.addEventListener('zw-feedback',function(e){try{(e.detail||[]).slice(0,10).forEach(function(x){var k=String(x.k).replace(/[^a-z]/g,'').slice(0,6),v=Math.max(1,Math.min(5,parseInt(x.v,10)||0));gc('fb-'+k+'-'+v,'回饋 '+k+' '+v+'分',true)})}catch(err){}});
   document.querySelectorAll('.tabs button').forEach(function(b){b.addEventListener('click',function(){var t=b.dataset.tab||b.dataset.main;if(t&&!seen[t]){seen[t]=1;gc('tab-'+t,'分頁 '+b.textContent,true)}})});
